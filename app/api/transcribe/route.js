@@ -31,13 +31,38 @@ export async function POST(request) {
       return NextResponse.json({ error: "Aucun fichier audio reçu" }, { status: 400 });
     }
 
-    // Récupération de la clé API (soit envoyée par le client, soit en variable d'environnement)
-    const userApiKey = request.headers.get("x-hf-api-key");
-    const apiKey = (userApiKey || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
+    const clientKey = (request.headers.get("x-hf-api-key") || "").trim();
+
+    // Clés spécifiques par service (client ou variables d'environnement Vercel)
+    const openaiKey = clientKey.startsWith("sk-") ? clientKey : (process.env.OPENAI_API_KEY || "").trim();
+    const groqKey = clientKey.startsWith("gsk_") ? clientKey : (process.env.GROQ_API_KEY || "").trim();
+    const hfKey = clientKey.startsWith("hf_") ? clientKey : (process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
+
+    // Diagnostic logging (visible dans les logs Vercel)
+    console.log("[TRANSCRIBE] Clés détectées:", {
+      clientKeyPrefix: clientKey ? clientKey.substring(0, 6) + "..." : "(vide)",
+      openaiKeyFound: !!openaiKey,
+      openaiKeyPrefix: openaiKey ? openaiKey.substring(0, 6) + "..." : "(vide)",
+      groqKeyFound: !!groqKey,
+      hfKeyFound: !!hfKey,
+      envOpenai: !!process.env.OPENAI_API_KEY,
+      envGroq: !!process.env.GROQ_API_KEY,
+      envHf: !!process.env.HUGGINGFACE_API_KEY,
+      envHfToken: !!process.env.HF_TOKEN,
+    });
+
+    // Si aucune clé n'est disponible, renvoyer un message clair immédiatement
+    if (!openaiKey && !groqKey && !hfKey) {
+      return NextResponse.json(
+        { error: "Aucune clé API configurée. Ajoutez OPENAI_API_KEY, GROQ_API_KEY ou HUGGINGFACE_API_KEY dans les variables d'environnement Vercel, ou entrez une clé dans les paramètres du site." },
+        { status: 401 }
+      );
+    }
+
     const base64Audio = Buffer.from(audioData).toString('base64');
 
-    // 1. Si la clé est une clé OpenAI (sk-...) -> Utilisation de OpenAI Whisper + Perfectionnement ChatGPT (GPT-4o-mini)
-    if (apiKey.startsWith("sk-")) {
+    // 1. Essai avec OpenAI (si la clé OpenAI est présente)
+    if (openaiKey) {
       try {
         const formData = new FormData();
         const blob = new Blob([audioData], { type: 'audio/wav' });
@@ -49,7 +74,7 @@ export async function POST(request) {
         const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey}`
+            "Authorization": `Bearer ${openaiKey}`
           },
           body: formData
         });
@@ -58,12 +83,12 @@ export async function POST(request) {
           const wData = await whisperRes.json();
           let text = wData.text || "";
 
-          // Perfectionnement via GPT-4o-mini pour restituer du vrai malgache naturel
+          // Perfectionnement via GPT-4o-mini pour du malgache naturel
           try {
             const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
               method: "POST",
               headers: {
-                "Authorization": `Bearer ${apiKey}`,
+                "Authorization": `Bearer ${openaiKey}`,
                 "Content-Type": "application/json"
               },
               body: JSON.stringify({
@@ -93,14 +118,17 @@ export async function POST(request) {
           }
 
           return NextResponse.json({ text });
+        } else {
+          const errText = await whisperRes.text();
+          console.warn("OpenAI API non OK, fallback vers HF:", whisperRes.status, errText);
         }
       } catch (err) {
-        console.warn("OpenAI API error, fallback to HF:", err);
+        console.warn("OpenAI API error, fallback vers HF:", err);
       }
     }
 
-    // 2. Si la clé est une clé Groq (gsk_...) -> Groq Whisper + Llama 3.3 70B
-    if (apiKey.startsWith("gsk_")) {
+    // 2. Essai avec Groq (si la clé Groq est présente)
+    if (groqKey) {
       try {
         const formData = new FormData();
         const blob = new Blob([audioData], { type: 'audio/wav' });
@@ -111,7 +139,7 @@ export async function POST(request) {
         const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey}`
+            "Authorization": `Bearer ${groqKey}`
           },
           body: formData
         });
@@ -124,7 +152,7 @@ export async function POST(request) {
             const llmRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
               method: "POST",
               headers: {
-                "Authorization": `Bearer ${apiKey}`,
+                "Authorization": `Bearer ${groqKey}`,
                 "Content-Type": "application/json"
               },
               body: JSON.stringify({
@@ -156,7 +184,7 @@ export async function POST(request) {
           return NextResponse.json({ text });
         }
       } catch (err) {
-        console.warn("Groq API error, fallback to HF:", err);
+        console.warn("Groq API error, fallback vers HF:", err);
       }
     }
 
@@ -165,7 +193,7 @@ export async function POST(request) {
 
     for (const endpoint of HUGGINGFACE_ENDPOINTS) {
       try {
-        const authHeaders = (apiKey && apiKey.startsWith("hf_")) ? { "Authorization": `Bearer ${apiKey}` } : {};
+        const authHeaders = hfKey ? { "Authorization": `Bearer ${hfKey}` } : {};
 
         let response = await fetch(endpoint, {
           method: "POST",
@@ -215,7 +243,7 @@ export async function POST(request) {
 
         if (response.status === 503) {
           return NextResponse.json(
-            { error: "Le modèle IA est en cours de chargement. Nouvelle tentative automatique..." },
+            { error: "Le modèle IA est en cours de chargement sur Hugging Face. Nouvelle tentative automatique..." },
             { status: 503 }
           );
         }
@@ -243,6 +271,7 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 
 

@@ -1,6 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { formatTime } from '../utils/audioChunker';
+import ClientOnly from './ClientOnly';
+import SvgIcon from './SvgIcon';
+
+const ICON_PAUSE = `<svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>`;
+const ICON_PLAY = `<svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff"><path d="M8 5v14l11-7z"/></svg>`;
 
 export default function AudioPlayerSync({ audioUrl, segments }) {
   const audioRef = useRef(null);
@@ -90,47 +95,43 @@ export default function AudioPlayerSync({ audioUrl, segments }) {
 
   return (
     <View style={styles.container}>
-      <audio
-        ref={audioRef}
-        src={audioUrl}
-        onTimeUpdate={handleTimeUpdate}
-        onLoadedMetadata={handleLoadedMetadata}
-        onPlay={handlePlay}
-        onEnded={() => setIsPlaying(false)}
-        style={{ display: 'none' }}
-      />
+      <ClientOnly>
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onPlay={handlePlay}
+          onEnded={() => setIsPlaying(false)}
+          style={{ display: 'none' }}
+        />
+      </ClientOnly>
 
       {/* Barre de contrôle du lecteur audio */}
       <View style={styles.playerBarContainer}>
         <View style={styles.playerBar}>
           <TouchableOpacity style={styles.playBtn} onPress={togglePlay}>
-            {isPlaying ? (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
-                <rect x="6" y="4" width="4" height="16" />
-                <rect x="14" y="4" width="4" height="16" />
-              </svg>
-            ) : (
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
+            <SvgIcon svg={isPlaying ? ICON_PAUSE : ICON_PLAY} width={20} height={20} />
           </TouchableOpacity>
 
           <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
 
-          <input
-            type="range"
-            min="0"
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            style={{
-              flex: 1,
-              marginHorizontal: 12,
-              accentColor: '#6366f1',
-              cursor: 'pointer',
-            }}
-          />
+          <ClientOnly>
+            <input
+              type="range"
+              min="0"
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              style={{
+                flex: 1,
+                marginLeft: 12,
+                marginRight: 12,
+                accentColor: '#6366f1',
+                cursor: 'pointer',
+              }}
+            />
+          </ClientOnly>
 
           <Text style={styles.timeText}>{formatTime(duration)}</Text>
 
@@ -164,48 +165,50 @@ export default function AudioPlayerSync({ audioUrl, segments }) {
               Écoute synchronisée (Transcription en direct)
             </Text>
           </View>
-          <div style={{ maxHeight: '350px', overflowY: 'auto', padding: '12px' }}>
-            {segments.map((seg, idx) => {
-              const isActive = idx === activeSegmentIndex;
-              return (
-                <div
-                  key={idx}
-                  ref={isActive ? activeSegmentRef : null}
-                  onClick={() => seekToSegment(seg)}
-                  style={{
-                    backgroundColor: isActive ? '#e0e7ff' : 'transparent',
-                    borderLeft: isActive ? '4px solid #4f46e5' : '4px solid transparent',
-                    padding: '10px 14px',
-                    borderRadius: '8px',
-                    marginBottom: '6px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease',
-                  }}
-                >
-                  <span
+          <ClientOnly>
+            <div style={{ maxHeight: '350px', overflowY: 'auto', padding: '12px' }}>
+              {segments.map((seg, idx) => {
+                const isActive = idx === activeSegmentIndex;
+                return (
+                  <div
+                    key={idx}
+                    ref={isActive ? activeSegmentRef : null}
+                    onClick={() => seekToSegment(seg)}
                     style={{
-                      fontSize: '12px',
-                      fontWeight: 'bold',
-                      color: isActive ? '#4338ca' : '#94a3b8',
-                      marginRight: '10px',
+                      backgroundColor: isActive ? '#e0e7ff' : 'transparent',
+                      borderLeft: isActive ? '4px solid #4f46e5' : '4px solid transparent',
+                      padding: '10px 14px',
+                      borderRadius: '8px',
+                      marginBottom: '6px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    [{formatTime(seg.startTime)}]
-                  </span>
-                  <span
-                    style={{
-                      fontSize: '15px',
-                      color: isActive ? '#1e1b4b' : '#334155',
-                      fontWeight: isActive ? '700' : '400',
-                      lineHeight: '1.5',
-                    }}
-                  >
-                    {seg.text || "..."}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+                    <span
+                      style={{
+                        fontSize: '12px',
+                        fontWeight: 'bold',
+                        color: isActive ? '#4338ca' : '#94a3b8',
+                        marginRight: '10px',
+                      }}
+                    >
+                      [{formatTime(seg.startTime)}]
+                    </span>
+                    <span
+                      style={{
+                        fontSize: '15px',
+                        color: isActive ? '#1e1b4b' : '#334155',
+                        fontWeight: isActive ? '700' : '400',
+                        lineHeight: '1.5',
+                      }}
+                    >
+                      {seg.text || "..."}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </ClientOnly>
         </View>
       )}
     </View>

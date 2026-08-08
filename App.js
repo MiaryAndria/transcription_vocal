@@ -14,8 +14,15 @@ import MicrophoneRecorder from './src/components/MicrophoneRecorder';
 import AudioPlayerSync from './src/components/AudioPlayerSync';
 import TranscriptionViewer from './src/components/TranscriptionViewer';
 import ApiKeyModal from './src/components/ApiKeyModal';
+import SvgIcon from './src/components/SvgIcon';
 import { sliceAudioIntoChunks, formatTime } from './src/utils/audioChunker';
 import { processAudioChunksBatch } from './src/utils/whisperApi';
+
+const ICON_MIC = `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>`;
+const ICON_HEADPHONES = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></svg>`;
+const ICON_BOLT = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>`;
+const ICON_FILE = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>`;
+const ICON_MIC_SM = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>`;
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('upload'); // 'upload' | 'record'
@@ -23,7 +30,7 @@ export default function App() {
   const [audioFile, setAudioFile] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   
-  // Clé API Hugging Face
+  // Clé API
   const [apiKey, setApiKey] = useState(() => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('hf_api_key') || '';
@@ -97,12 +104,7 @@ export default function App() {
         <View style={styles.header}>
           <View style={styles.logoRow}>
             <View style={{ alignItems: 'center', marginRight: 12 }}>
-              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                <line x1="12" y1="19" x2="12" y2="23" />
-                <line x1="8" y1="23" x2="16" y2="23" />
-              </svg>
+              <SvgIcon svg={ICON_MIC} width={34} height={34} />
             </View>
             <View>
               <Text style={styles.appTitle}>Transcription Audio Malgache</Text>
@@ -122,10 +124,7 @@ export default function App() {
               onPress={() => setSelectedMode('sync')}
             >
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={selectedMode === 'sync' ? '#ffffff' : '#475569'} strokeWidth="2">
-                  <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
-                  <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
-                </svg>
+                <SvgIcon svg={ICON_HEADPHONES.replace('currentColor', selectedMode === 'sync' ? '#ffffff' : '#475569')} width={16} height={16} />
                 <Text style={[styles.modeBtnText, selectedMode === 'sync' && styles.modeBtnTextActive]}>
                   1. Écoute + Transcription Synchronisée
                 </Text>
@@ -137,9 +136,7 @@ export default function App() {
               onPress={() => setSelectedMode('direct')}
             >
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={selectedMode === 'direct' ? '#ffffff' : '#475569'} strokeWidth="2">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-                </svg>
+                <SvgIcon svg={ICON_BOLT.replace('currentColor', selectedMode === 'direct' ? '#ffffff' : '#475569')} width={16} height={16} />
                 <Text style={[styles.modeBtnText, selectedMode === 'direct' && styles.modeBtnTextActive]}>
                   2. Transcription Intégrale Directe
                 </Text>
@@ -156,10 +153,7 @@ export default function App() {
               onPress={() => setActiveTab('upload')}
             >
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 6 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'upload' ? '#4f46e5' : '#64748b'} strokeWidth="2">
-                  <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
-                  <polyline points="13 2 13 9 20 9" />
-                </svg>
+                <SvgIcon svg={ICON_FILE.replace('currentColor', activeTab === 'upload' ? '#4f46e5' : '#64748b')} width={16} height={16} />
                 <Text style={[styles.tabText, activeTab === 'upload' && styles.tabTextActive]}>
                   Fichier Audio (Importation)
                 </Text>
@@ -171,10 +165,7 @@ export default function App() {
               onPress={() => setActiveTab('record')}
             >
               <View style={{ alignItems: 'center', flexDirection: 'row', gap: 6 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'record' ? '#4f46e5' : '#64748b'} strokeWidth="2">
-                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
-                  <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-                </svg>
+                <SvgIcon svg={ICON_MIC_SM.replace('currentColor', activeTab === 'record' ? '#4f46e5' : '#64748b')} width={16} height={16} />
                 <Text style={[styles.tabText, activeTab === 'record' && styles.tabTextActive]}>
                   Enregistrement Microphone
                 </Text>

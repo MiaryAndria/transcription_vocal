@@ -1,5 +1,9 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import SvgIcon from './SvgIcon';
+import ClientOnly from './ClientOnly';
+
+const ICON_MUSIC = `<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>`;
 
 export default function AudioUploader({ onFileSelected, disabled }) {
   const [dragOver, setDragOver] = useState(false);
@@ -34,51 +38,56 @@ export default function AudioUploader({ onFileSelected, disabled }) {
 
   return (
     <View style={styles.container}>
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-        onDragLeave={() => setDragOver(false)}
-        onDrop={handleDrop}
-        style={{
-          border: dragOver ? '2px dashed #6366f1' : '2px dashed #cbd5e1',
-          backgroundColor: dragOver ? '#f0f3ff' : '#f8fafc',
-          borderRadius: '16px',
-          padding: '36px 20px',
-          textAlign: 'center',
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          transition: 'all 0.2s ease',
-        }}
-      >
-        <input
-          type="file"
-          accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm"
-          id="audioFileInput"
-          onChange={handlePickFile}
-          disabled={disabled}
-          style={{ display: 'none' }}
-        />
-        <label htmlFor="audioFileInput" style={{ cursor: disabled ? 'not-allowed' : 'pointer', display: 'block' }}>
-          <View style={{ marginBottom: 12, alignItems: 'center' }}>
-            <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M9 18V5l12-2v13" />
-              <circle cx="6" cy="18" r="3" />
-              <circle cx="18" cy="16" r="3" />
-            </svg>
+      <ClientOnly
+        fallback={
+          <View style={styles.fallbackBox}>
+            <Text style={styles.title}>Cliquez ici ou déposez votre fichier audio</Text>
+            <Text style={styles.subtitle}>Tous formats supportés : MP3, WAV, M4A, AAC, OGG, FLAC, WEBM (jusqu'à 80 min)</Text>
           </View>
-          <Text style={styles.title}>
-            {selectedFile ? selectedFile.name : "Cliquez ici ou déposez votre fichier audio"}
-          </Text>
-          <Text style={styles.subtitle}>
-            Tous formats supportés : MP3, WAV, M4A, AAC, OGG, FLAC, WEBM (jusqu'à 80 min)
-          </Text>
-          {selectedFile && (
-            <View style={styles.fileBadge}>
-              <Text style={styles.fileBadgeText}>
-                Fichier sélectionné : {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
-              </Text>
+        }
+      >
+        <div
+          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+          onDragLeave={() => setDragOver(false)}
+          onDrop={handleDrop}
+          style={{
+            border: dragOver ? '2px dashed #6366f1' : '2px dashed #cbd5e1',
+            backgroundColor: dragOver ? '#f0f3ff' : '#f8fafc',
+            borderRadius: '16px',
+            padding: '36px 20px',
+            textAlign: 'center',
+            cursor: disabled ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s ease',
+          }}
+        >
+          <input
+            type="file"
+            accept="audio/*,.mp3,.wav,.m4a,.aac,.ogg,.flac,.webm"
+            id="audioFileInput"
+            onChange={handlePickFile}
+            disabled={disabled}
+            style={{ display: 'none' }}
+          />
+          <label htmlFor="audioFileInput" style={{ cursor: disabled ? 'not-allowed' : 'pointer', display: 'block' }}>
+            <View style={{ marginBottom: 12, alignItems: 'center' }}>
+              <SvgIcon svg={ICON_MUSIC} width={48} height={48} />
             </View>
-          )}
-        </label>
-      </div>
+            <Text style={styles.title}>
+              {selectedFile ? selectedFile.name : "Cliquez ici ou déposez votre fichier audio"}
+            </Text>
+            <Text style={styles.subtitle}>
+              Tous formats supportés : MP3, WAV, M4A, AAC, OGG, FLAC, WEBM (jusqu'à 80 min)
+            </Text>
+            {selectedFile && (
+              <View style={styles.fileBadge}>
+                <Text style={styles.fileBadgeText}>
+                  Fichier sélectionné : {(selectedFile.size / (1024 * 1024)).toFixed(2)} MB
+                </Text>
+              </View>
+            )}
+          </label>
+        </div>
+      </ClientOnly>
     </View>
   );
 }
@@ -87,6 +96,15 @@ const styles = StyleSheet.create({
   container: {
     marginVertical: 8,
     width: '100%',
+  },
+  fallbackBox: {
+    borderWidth: 2,
+    borderColor: '#cbd5e1',
+    borderStyle: 'dashed',
+    borderRadius: 16,
+    padding: 36,
+    alignItems: 'center',
+    backgroundColor: '#f8fafc',
   },
   title: {
     fontSize: 16,
