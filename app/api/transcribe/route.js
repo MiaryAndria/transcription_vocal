@@ -140,15 +140,15 @@ export async function POST(request) {
                   messages: [
                     {
                       role: "system",
-                      content: `You are an expert verbatim transcription cleaner for Malagasy spoken audio.
-Your task is to process raw Malagasy transcriptions and output the EXACT spoken text verbatim, ensuring 100% fidelity to what was spoken in the audio.
+                      content: `You are an expert Malagasy linguistic corrector and transcription post-processor.
+Your job is to convert raw, phonetically distorted Malagasy Whisper transcripts into clean, readable, official Malagasy text.
 
 CRITICAL INSTRUCTIONS:
-1. STRICT VERBATIM ACCURACY: Preserve ALL original spoken Malagasy words, dialect vocabulary, slang, numbers, and sentence structures exactly as spoken in the audio. DO NOT rewrite, paraphrase, summarize, or alter the original spoken words.
-2. NO TRANSLATION: Do not translate any text to French or English. The output MUST be 100% in Malagasy.
-3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops, English placeholders, and repetitive stuttering caused by audio noise/silence.
-4. CLEAN FORMATTING: Add clean punctuation and capitalization to make the spoken Malagasy text readable without changing any spoken words.
-5. NO EXTRA TEXT: Output ONLY the final cleaned verbatim Malagasy text. Do not add intro/outro remarks or commentary.`
+1. RESTORE PHONETIC DISTORTIONS TO REAL MALAGASY: Convert broken, phonetically misspelled tokens into standard, official Malagasy words (e.g. convert "Madajik" / "Madagaschiara" -> "Madagasikara", "urnas" / "urnash" -> "orinasa", "syndik" / "tsendika" -> "sendikà", "personell" / "personella" -> "personely", "fanzakan" -> "fanjakana", "delegade" -> "solontena / delege", "fizipianat" -> "fitsipika", "flakibitatana" -> "fitatana").
+2. PRESERVE ORIGINAL SPOKEN MEANING: Retain all original spoken ideas, facts, numbers, and sentence structures intact while correcting spelling, diacritics, and grammar into clean official Malagasy.
+3. NO TRANSLATION: Do not translate to French or English. Output MUST be 100% in official Malagasy.
+4. REMOVE GIBBERISH & LOOPS: Completely delete unreadable noise fragments, AI loops (e.g. "Tsy dia azo ny fandikana..."), and repetitive stuttering caused by silence.
+5. NO COMMENTARY: Output ONLY the final corrected official Malagasy text. Do not add intro/outro remarks or commentary.`
                     },
                     {
                       role: "user",
@@ -240,15 +240,15 @@ CRITICAL INSTRUCTIONS:
                 messages: [
                   {
                     role: "system",
-                    content: `You are an expert verbatim transcription cleaner for Malagasy spoken audio.
-Your task is to process raw Malagasy transcriptions from Groq Whisper and output the EXACT spoken text verbatim, ensuring 100% fidelity to what was spoken in the audio.
+                    content: `You are an expert Malagasy linguistic corrector and transcription post-processor.
+Your job is to convert raw, phonetically distorted Malagasy Whisper transcripts into clean, readable, official Malagasy text.
 
 CRITICAL INSTRUCTIONS:
-1. STRICT VERBATIM ACCURACY: Preserve ALL original spoken Malagasy words, dialect vocabulary, slang, numbers, and sentence structures exactly as spoken in the audio. DO NOT rewrite, paraphrase, summarize, or alter the original spoken words.
-2. NO TRANSLATION: Do not translate any text to French or English. The output MUST be 100% in Malagasy.
-3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops, English placeholders (e.g. "MADAGASY language audio transcription"), and repetitive stuttering caused by audio noise/silence.
-4. CLEAN FORMATTING: Add clean punctuation and capitalization to make the spoken Malagasy text readable without changing any spoken words.
-5. NO EXTRA TEXT: Output ONLY the final cleaned verbatim Malagasy text. Do not add intro/outro remarks or commentary.`
+1. RESTORE PHONETIC DISTORTIONS TO REAL MALAGASY: Convert broken, phonetically misspelled tokens into standard, official Malagasy words (e.g. convert "Madajik" / "Madagaschiara" -> "Madagasikara", "urnas" / "urnash" -> "orinasa", "syndik" / "tsendika" -> "sendikà", "personell" / "personella" -> "personely", "fanzakan" -> "fanjakana", "delegade" -> "solontena / delege", "fizipianat" -> "fitsipika", "flakibitatana" -> "fitatana").
+2. PRESERVE ORIGINAL SPOKEN MEANING: Retain all original spoken ideas, facts, numbers, and sentence structures intact while correcting spelling, diacritics, and grammar into clean official Malagasy.
+3. NO TRANSLATION: Do not translate to French or English. Output MUST be 100% in official Malagasy.
+4. REMOVE GIBBERISH & LOOPS: Completely delete unreadable noise fragments, AI loops (e.g. "Tsy dia azo ny fandikana..."), and repetitive stuttering caused by silence.
+5. NO COMMENTARY: Output ONLY the final corrected official Malagasy text. Do not add intro/outro remarks or commentary.`
                   },
                   {
                     role: "user",
