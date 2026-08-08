@@ -89,12 +89,16 @@ export async function POST(request) {
     const base64Audio = Buffer.from(audioData).toString('base64');
 
     const MALAGASY_DICTIONARY_PROMPT = 
-      "Fandraisam-peo amin'ny teny malagasy ofisialy, ara-dalàna sy ara-fiarahamonina eto Madagasikara: " +
-      "sendika, komity, mpiasa, lalàna, didy, fivoriana, mpitantana, Madagasikara, fanjakana, orinasa, solontena, " +
-      "delegasiona, solontenan'ny mpiasa, lalàna mifehy ny asa, sata, fitsipika, fifanarahana, dinika sosialy, " +
-      "fandraharahana, tambazotra, fitantanana, fampandrosoana, fiarahamonina, mpanatanteraka, fihaonambe, " +
-      "birao, fifidianana, fitarainana, zo, adidy, karama, fisotroan-dronono, fahasalamana, fiarovana, fepetra, " +
-      "fivondronana, sekretera jeneraly, filoha, mpikambana, rafitra, komity antriprise, fanitsiana, tatitra.";
+      "Firaketana teny malagasy ofisialy sy fampiasan-teny eto Madagasikara: " +
+      "fanjakana, lalàna, mpiasa, sendika, komity, mpitantana, orinasa, fivoriana, solontena, " +
+      "fitantanana, fifanarahana, dinika, fiarahamonina, karama, fisotroan-dronono, fahasalamana, fiarovana, " +
+      "fampandrosoana, fivoarana, fanabeazana, fahalalana, raharaha, fananana, tombony, olana, vahaolana, " +
+      "fifandraisana, tatitra, fanapahan-kevitra, fanohanana, tetikasa, tetibola, fepetra, fitaovana, " +
+      "rafitra, fitsipika, adidy, zo, filoha, sekretera, mpikambana, fihaonambe, delegasiona, birao, " +
+      "teny, fehezanteny, zava-misy, mponina, fiainana, fihavanana, firaisankina, fahombiazana, fahendrena, " +
+      "kolontsaina, tantara, fizotran'ny asa, famokarana, varotra, toe-karena, fihariana, teknolojia, " +
+      "olona, mpiray tanindrazana, fiaraha-miasa, fandraisana an-tanana, fanasongadinana, fankatoavana, " +
+      "fananganana, fanazavana, fampahalalana, fitsaboana, fahalalahana, demokrasia, rariny, hitsiny.";
 
     // 1. Essai avec OpenAI (Priorité pour qualité 99% + Pipeline 3 étapes ChatGPT)
     if (openaiKey) {
