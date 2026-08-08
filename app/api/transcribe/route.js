@@ -106,8 +106,7 @@ export async function POST(request) {
               return NextResponse.json({ text: "" });
             }
 
-            // Pipeline à 3 étapes recommandé :
-            // 🎙️ Audio malgache -> 📝 Raw malgache -> 🇫🇷 Traduction de compréhension en français -> 🇲🇬 Rédaction en VRAI malgache naturel
+            // Pipeline de nettoyage mot-à-mot (Verbatim Malagasy)
             try {
               const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
                 method: "POST",
@@ -120,21 +119,22 @@ export async function POST(request) {
                   messages: [
                     {
                       role: "system",
-                      content: `Ianao dia mpanitsy teny malagasy sy mpandika teny matihanina.
-Étape 1 : Analyse le sens exact de cette transcription audio malgache brute.
-Étape 2 : Traduis-la mentalement en français naturel pour bien comprendre le contexte et toutes les phrases.
-Étape 3 : Rédige le texte final en VRAI MALGACHE ÉCRIT, naturel, fluide et idiomatique (par exemple : 'Zay mampatonga anah rehefa pro iny ahantoko aloha...').
-Règles strictes :
-- Garde 100% du sens et des mots d'origine du vocal.
-- Ne traduis PAS le résultat final en français, retourne UNIQUEMENT le texte final rédigé en malgache naturel.
-- Supprime les méta-commentaires, hésitations ou répétons inutile.`
+                      content: `You are an expert verbatim transcription cleaner for Malagasy spoken audio.
+Your task is to process raw Malagasy transcriptions and output the EXACT spoken text verbatim, ensuring 100% fidelity to what was spoken in the audio.
+
+CRITICAL INSTRUCTIONS:
+1. STRICT VERBATIM ACCURACY: Preserve ALL original spoken Malagasy words, dialect vocabulary, slang, numbers, and sentence structures exactly as spoken in the audio. DO NOT rewrite, paraphrase, summarize, or alter the original spoken words.
+2. NO TRANSLATION: Do not translate any text to French or English. The output MUST be 100% in Malagasy.
+3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops (such as "Tsy dia azo ny fandikana...", "teny ilay dia tsy teny malagasy..."), and repetitive stuttering caused by audio noise/silence.
+4. CLEAN FORMATTING: Add clean punctuation and capitalization to make the spoken Malagasy text readable without changing any spoken words.
+5. NO EXTRA TEXT: Output ONLY the final cleaned verbatim Malagasy text. Do not add intro/outro remarks or commentary.`
                     },
                     {
                       role: "user",
                       content: rawText
                     }
                   ],
-                  temperature: 0.2
+                  temperature: 0.1
                 })
               });
 
@@ -188,7 +188,7 @@ Règles strictes :
         formData.append('file', blob, 'audio.wav');
         formData.append('model', 'whisper-large-v3');
         formData.append('language', 'mg');
-        formData.append('prompt', "Transcription audio amin'ny teny malagasy madio sy mazava:");
+        formData.append('prompt', "Miresaka amin'ny teny malagasy madio, mazava, araka ny fiteny mahazatra eto Madagasikara (Malagasy language audio transcription).");
 
         const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
@@ -218,21 +218,22 @@ Règles strictes :
                 messages: [
                   {
                     role: "system",
-                    content: `Ianao dia mpanitsy teny malagasy sy mpandika teny matihanina.
-Étape 1 : Analyse le sens exact de cette transcription audio malgache brute.
-Étape 2 : Traduis-la mentalement en français naturel pour bien comprendre le contexte et toutes les phrases.
-Étape 3 : Rédige le texte final en VRAI MALGACHE ÉCRIT, naturel, fluide et idiomatique (par exemple : 'Zay mampatonga anah rehefa pro iny ahantoko aloha...').
-Règles strictes :
-- Garde 100% du sens et des mots d'origine du vocal.
-- Ne traduis PAS le résultat final en français, retourne UNIQUEMENT le texte final rédigé en malgache naturel.
-- Supprime impérativement les méta-commentaires, les phrases répétées en boucle (ex: 'Tsy dia azo ny fandikana...'), et retiens uniquement le contenu parlé authentique.`
+                    content: `You are an expert verbatim transcription cleaner for Malagasy spoken audio.
+Your task is to process raw Malagasy transcriptions from Groq Whisper and output the EXACT spoken text verbatim, ensuring 100% fidelity to what was spoken in the audio.
+
+CRITICAL INSTRUCTIONS:
+1. STRICT VERBATIM ACCURACY: Preserve ALL original spoken Malagasy words, dialect vocabulary, slang, numbers, and sentence structures exactly as spoken in the audio. DO NOT rewrite, paraphrase, summarize, or alter the original spoken words.
+2. NO TRANSLATION: Do not translate any text to French or English. The output MUST be 100% in Malagasy.
+3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops (such as "Tsy dia azo ny fandikana...", "teny ilay dia tsy teny malagasy..."), and repetitive stuttering caused by audio noise/silence.
+4. CLEAN FORMATTING: Add clean punctuation and capitalization to make the spoken Malagasy text readable without changing any spoken words.
+5. NO EXTRA TEXT: Output ONLY the final cleaned verbatim Malagasy text. Do not add intro/outro remarks or commentary.`
                   },
                   {
                     role: "user",
                     content: text
                   }
                 ],
-                temperature: 0.2
+                temperature: 0.1
               })
             });
 
