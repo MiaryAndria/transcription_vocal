@@ -3,9 +3,8 @@ import { NextResponse } from 'next/server';
 export const maxDuration = 60; // 60 seconds max execution on Vercel
 
 const HUGGINGFACE_ENDPOINTS = [
-  "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3",
   "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo",
-  "https://router.huggingface.co/hf-inference/models/openai/whisper-medium",
+  "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3",
 ];
 
 function cleanRepetitiveText(text) {
@@ -38,92 +37,102 @@ export async function POST(request) {
     const groqKey = clientKey.startsWith("gsk_") ? clientKey : (process.env.GROQ_API_KEY || "").trim();
     const hfKey = clientKey.startsWith("hf_") ? clientKey : (process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
 
-    // Diagnostic logging (visible dans les logs Vercel)
-    console.log("[TRANSCRIBE] Clés détectées:", {
-      clientKeyPrefix: clientKey ? clientKey.substring(0, 6) + "..." : "(vide)",
-      openaiKeyFound: !!openaiKey,
-      openaiKeyPrefix: openaiKey ? openaiKey.substring(0, 6) + "..." : "(vide)",
-      groqKeyFound: !!groqKey,
-      hfKeyFound: !!hfKey,
-      envOpenai: !!process.env.OPENAI_API_KEY,
-      envGroq: !!process.env.GROQ_API_KEY,
-      envHf: !!process.env.HUGGINGFACE_API_KEY,
-      envHfToken: !!process.env.HF_TOKEN,
-    });
-
     // Si aucune clé n'est disponible, renvoyer un message clair immédiatement
     if (!openaiKey && !groqKey && !hfKey) {
       return NextResponse.json(
-        { error: "Aucune clé API configurée. Ajoutez OPENAI_API_KEY, GROQ_API_KEY ou HUGGINGFACE_API_KEY dans les variables d'environnement Vercel, ou entrez une clé dans les paramètres du site." },
+        { error: "Aucune clé API configurée. Ajoutez OPENAI_API_KEY, GROQ_API_KEY ou HUGGINGFACE_API_KEY sur Vercel." },
         { status: 401 }
       );
     }
 
     const base64Audio = Buffer.from(audioData).toString('base64');
 
-    // 1. Essai avec OpenAI (si la clé OpenAI est présente)
+    // 1. Essai avec OpenAI (Priorité absolue pour qualité 99% + Pipeline 3 étapes ChatGPT)
     if (openaiKey) {
-      try {
-        const formData = new FormData();
-        const blob = new Blob([audioData], { type: 'audio/wav' });
-        formData.append('file', blob, 'audio.wav');
-        formData.append('model', 'whisper-1');
-        formData.append('language', 'mg');
-        formData.append('prompt', "Transcription audio amin'ny teny malagasy madio sy mazava:");
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        try {
+          const formData = new FormData();
+          const blob = new Blob([audioData], { type: 'audio/wav' });
+          formData.append('file', blob, 'audio.wav');
+          formData.append('model', 'whisper-1');
+          formData.append('language', 'mg');
+          formData.append('prompt', "Transcription audio amin'ny teny malagasy madio sy mazava:");
 
-        const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
-          method: "POST",
-          headers: {
-            "Authorization": `Bearer ${openaiKey}`
-          },
-          body: formData
-        });
+          const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${openaiKey}`
+            },
+            body: formData
+          });
 
-        if (whisperRes.ok) {
-          const wData = await whisperRes.json();
-          let text = wData.text || "";
+          if (whisperRes.ok) {
+            const wData = await whisperRes.json();
+            let rawText = (wData.text || "").trim();
 
-          // Perfectionnement via GPT-4o-mini pour du malgache naturel
-          try {
-            const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
-              method: "POST",
-              headers: {
-                "Authorization": `Bearer ${openaiKey}`,
-                "Content-Type": "application/json"
-              },
-              body: JSON.stringify({
-                model: "gpt-4o-mini",
-                messages: [
-                  {
-                    role: "system",
-                    content: "Ianao dia mpanitsy teny malagasy. Correct and polish the following raw audio transcription into clean, natural, human-written Malagasy text (e.g. 'Zay mampatonga anah rehefa pro...'). Keep the exact original meaning and spoken Malagasy words. Do NOT translate to French. Output ONLY the polished Malagasy text."
-                  },
-                  {
-                    role: "user",
-                    content: text
-                  }
-                ],
-                temperature: 0.2
-              })
-            });
-
-            if (gptRes.ok) {
-              const gData = await gptRes.json();
-              if (gData.choices && gData.choices[0] && gData.choices[0].message) {
-                text = gData.choices[0].message.content.trim();
-              }
+            if (!rawText) {
+              return NextResponse.json({ text: "" });
             }
-          } catch (e) {
-            console.warn("GPT polish warning:", e);
-          }
 
-          return NextResponse.json({ text });
-        } else {
-          const errText = await whisperRes.text();
-          console.warn("OpenAI API non OK, fallback vers HF:", whisperRes.status, errText);
+            // Pipeline à 3 étapes recommandé :
+            // 🎙️ Audio malgache -> 📝 Raw malgache -> 🇫🇷 Traduction de compréhension en français -> 🇲🇬 Rédaction en VRAI malgache naturel
+            try {
+              const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${openaiKey}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  model: "gpt-4o-mini",
+                  messages: [
+                    {
+                      role: "system",
+                      content: `Ianao dia mpanitsy teny malagasy sy mpandika teny matihanina.
+Étape 1 : Analyse le sens exact de cette transcription audio malgache brute.
+Étape 2 : Traduis-la mentalement en français naturel pour bien comprendre le contexte et toutes les phrases.
+Étape 3 : Rédige le texte final en VRAI MALGACHE ÉCRIT, naturel, fluide et idiomatique (par exemple : 'Zay mampatonga anah rehefa pro iny ahantoko aloha...').
+Règles strictes :
+- Garde 100% du sens et des mots d'origine du vocal.
+- Ne traduis PAS le résultat final en français, retourne UNIQUEMENT le texte final rédigé en malgache naturel.
+- Corrige l'orthographe phonétique et supprime les hésitations/répétitions inutiles.`
+                    },
+                    {
+                      role: "user",
+                      content: rawText
+                    }
+                  ],
+                  temperature: 0.2
+                })
+              });
+
+              if (gptRes.ok) {
+                const gData = await gptRes.json();
+                if (gData.choices && gData.choices[0] && gData.choices[0].message) {
+                  const polishedText = gData.choices[0].message.content.trim();
+                  if (polishedText) {
+                    return NextResponse.json({ text: polishedText });
+                  }
+                }
+              }
+            } catch (e) {
+              console.warn("GPT polish warning:", e);
+            }
+
+            return NextResponse.json({ text: rawText });
+          } else {
+            const errText = await whisperRes.text();
+            console.warn(`OpenAI Whisper tentative ${attempt} non OK (${whisperRes.status}):`, errText);
+            if (whisperRes.status === 429 || whisperRes.status >= 500) {
+              await new Promise((r) => setTimeout(r, 1500 * attempt));
+              continue;
+            }
+            break;
+          }
+        } catch (err) {
+          console.warn(`OpenAI API error tentative ${attempt}:`, err);
+          await new Promise((r) => setTimeout(r, 1500 * attempt));
         }
-      } catch (err) {
-        console.warn("OpenAI API error, fallback vers HF:", err);
       }
     }
 
@@ -160,7 +169,7 @@ export async function POST(request) {
                 messages: [
                   {
                     role: "system",
-                    content: "Ianao dia mpanitsy teny malagasy. Correct and polish the following raw audio transcription into clean, natural, human-written Malagasy text (e.g. 'Zay mampatonga anah rehefa pro...'). Keep the exact original meaning and spoken Malagasy words. Do NOT translate to French. Output ONLY the polished Malagasy text."
+                    content: "Ianao dia mpanitsy teny malagasy. Correct and polish the raw audio transcription into clean, natural, human-written Malagasy text (e.g. 'Zay mampatonga anah rehefa pro...'). Keep exact original meaning. Output ONLY polished Malagasy text."
                   },
                   {
                     role: "user",
@@ -184,86 +193,72 @@ export async function POST(request) {
           return NextResponse.json({ text });
         }
       } catch (err) {
-        console.warn("Groq API error, fallback vers HF:", err);
+        console.warn("Groq API error:", err);
       }
     }
 
-    // 3. Fallback Hugging Face Router
+    // 3. Fallback Hugging Face Router (Uniquement si OpenAI / Groq n'ont pas fonctionné)
     let lastError = null;
 
-    for (const endpoint of HUGGINGFACE_ENDPOINTS) {
-      try {
-        const authHeaders = hfKey ? { "Authorization": `Bearer ${hfKey}` } : {};
-
-        let response = await fetch(endpoint, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-wait-for-model": "true",
-            ...authHeaders,
-          },
-          body: JSON.stringify({
-            inputs: base64Audio,
-            parameters: {
-              generate_kwargs: {
-                language: "malagasy",
-                task: "transcribe",
-                no_repeat_ngram_size: 3
-              }
-            }
-          }),
-        });
-
-        if (!response.ok && response.status !== 401 && response.status !== 503) {
-          response = await fetch(endpoint, {
+    if (hfKey) {
+      for (const endpoint of HUGGINGFACE_ENDPOINTS) {
+        try {
+          let response = await fetch(endpoint, {
             method: "POST",
             headers: {
-              "Content-Type": "audio/wav",
+              "Content-Type": "application/json",
               "x-wait-for-model": "true",
-              ...authHeaders,
+              "Authorization": `Bearer ${hfKey}`
             },
-            body: audioData,
+            body: JSON.stringify({
+              inputs: base64Audio,
+              parameters: {
+                generate_kwargs: {
+                  language: "malagasy",
+                  task: "transcribe",
+                  no_repeat_ngram_size: 3
+                }
+              }
+            }),
           });
-        }
 
-        if (response.ok) {
-          const result = await response.json();
-          let text = "";
-          if (typeof result === 'string') {
-            text = result;
-          } else if (result && result.text) {
-            text = result.text;
-          } else if (Array.isArray(result) && result[0] && result[0].text) {
-            text = result[0].text;
-          } else if (result && result.chunks) {
-            text = result.chunks.map(c => c.text).join(' ');
+          if (!response.ok && response.status !== 401 && response.status !== 503) {
+            response = await fetch(endpoint, {
+              method: "POST",
+              headers: {
+                "Content-Type": "audio/wav",
+                "x-wait-for-model": "true",
+                "Authorization": `Bearer ${hfKey}`
+              },
+              body: audioData,
+            });
           }
-          return NextResponse.json({ text: cleanRepetitiveText(text) });
-        }
 
-        if (response.status === 503) {
-          return NextResponse.json(
-            { error: "Le modèle IA est en cours de chargement sur Hugging Face. Nouvelle tentative automatique..." },
-            { status: 503 }
-          );
-        }
+          if (response.ok) {
+            const result = await response.json();
+            let text = "";
+            if (typeof result === 'string') {
+              text = result;
+            } else if (result && result.text) {
+              text = result.text;
+            } else if (Array.isArray(result) && result[0] && result[0].text) {
+              text = result[0].text;
+            } else if (result && result.chunks) {
+              text = result.chunks.map(c => c.text).join(' ');
+            }
+            return NextResponse.json({ text: cleanRepetitiveText(text) });
+          }
 
-        if (response.status === 401) {
-          return NextResponse.json(
-            { error: "Accès non autorisé (Statut 401). Une clé API valide (OpenAI sk-..., Groq gsk_... ou Hugging Face hf_...) est requise." },
-            { status: 401 }
-          );
+          const errText = await response.text();
+          lastError = `Statut ${response.status}: ${errText.substring(0, 150)}`;
+        } catch (e) {
+          lastError = e.message;
         }
-
-        const errText = await response.text();
-        lastError = `Statut ${response.status}: ${errText.substring(0, 150)}`;
-      } catch (e) {
-        lastError = e.message;
       }
     }
 
     return NextResponse.json(
-      { error: `Erreur API de transcription (${lastError})` },
+      { error: `Erreur API de transcription (${lastError || 'Service indisponible'})` },
       { status: 500 }
     );
   } catch (error) {
@@ -271,7 +266,3 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
-
-
-
-

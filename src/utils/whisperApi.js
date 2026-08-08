@@ -4,9 +4,9 @@
  */
 
 /**
- * Transcribes a single audio blob chunk (approx 30s WAV)
+ * Transcribes a single audio blob chunk (approx 60s WAV)
  * @param {Blob} audioBlob 
- * @param {string} apiKey Optionnel: Clé API Hugging Face (hf_...)
+ * @param {string} apiKey Optionnel: Clé API (sk-..., gsk_..., hf_...)
  * @returns {Promise<{text: string, error?: string}>}
  */
 export async function transcribeChunk(audioBlob, apiKey = '') {
@@ -41,15 +41,15 @@ export async function transcribeChunk(audioBlob, apiKey = '') {
 }
 
 /**
- * Traite plusieurs morceaux audio en parallèle pour accélérer les audios de 80 min
+ * Traite tous les morceaux audio en parallèle de façon ultra-robuste (pour audios de 1h10+)
  * @param {Array<{id: number, blob: Blob, startTime: number, endTime: number}>} chunks 
- * @param {string} apiKey Optionnel: Clé API Hugging Face
+ * @param {string} apiKey Optionnel: Clé API
  * @param {function(number, number, string)} onProgress (completedCount, totalChunks, currentText)
  * @returns {Promise<Array<{id: number, startTime: number, endTime: number, text: string}>>}
  */
 export async function processAudioChunksBatch(chunks, apiKey = '', onProgress) {
   const results = new Array(chunks.length);
-  const CONCURRENCY = 5; // 5 requêtes simultanées en parallèle pour vitesse maximale (4x plus rapide)
+  const CONCURRENCY = 3; // 3 requêtes simultanées pour éviter les erreurs de surcharge tout en restant ultra-rapide
   let completed = 0;
 
   for (let i = 0; i < chunks.length; i += CONCURRENCY) {
@@ -62,19 +62,18 @@ export async function processAudioChunksBatch(chunks, apiKey = '', onProgress) {
         let success = false;
         let textResult = "";
 
-        while (attempts < 3 && !success) {
+        while (attempts < 4 && !success) {
           attempts++;
           const res = await transcribeChunk(chunk.blob, apiKey);
+
           if (res.error && res.error.includes("chargement")) {
-            // Attendre 4 secondes si le modèle se charge
             await new Promise((r) => setTimeout(r, 4000));
           } else if (res.error) {
-            console.warn(`Morceau ${index} tentative ${attempts} échouée:`, res.error);
-            // Si 401 (accès non autorisé), interrompre les tentatives inutiles
+            console.warn(`Morceau ${index} (min ${Math.floor(chunk.startTime / 60)}) tentative ${attempts} échouée:`, res.error);
             if (res.error.includes("401") || res.error.includes("Accès non autorisé")) {
               throw new Error(res.error);
             }
-            await new Promise((r) => setTimeout(r, 1500));
+            await new Promise((r) => setTimeout(r, 1000 * attempts));
           } else {
             textResult = res.text.trim();
             success = true;
@@ -98,4 +97,3 @@ export async function processAudioChunksBatch(chunks, apiKey = '', onProgress) {
 
   return results;
 }
-
