@@ -34,7 +34,7 @@ export async function POST(request) {
 
     // Clés spécifiques par service (client ou variables d'environnement Vercel)
     const openaiKey = clientKey.startsWith("sk-") ? clientKey : (process.env.OPENAI_API_KEY || "").trim();
-    const groqKey = clientKey.startsWith("gsk_") ? clientKey : (process.env.GROQ_API_KEY || "").trim();
+    const groqKey = clientKey.startsWith("gsk_") ? clientKey : (process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.grok_api_key || process.env.groq_api_key || "").trim();
     const hfKey = clientKey.startsWith("hf_") ? clientKey : (process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
 
     // Si aucune clé n'est disponible, renvoyer un message clair immédiatement
@@ -47,7 +47,7 @@ export async function POST(request) {
 
     const base64Audio = Buffer.from(audioData).toString('base64');
 
-    // 1. Essai avec OpenAI (Priorité absolue pour qualité 99% + Pipeline 3 étapes ChatGPT)
+    // 1. Essai avec OpenAI (Priorité pour qualité 99% + Pipeline 3 étapes ChatGPT)
     if (openaiKey) {
       for (let attempt = 1; attempt <= 3; attempt++) {
         try {
@@ -125,10 +125,14 @@ Règles strictes :
             console.warn(`OpenAI Whisper tentative ${attempt} non OK (${whisperRes.status}):`, errText);
             
             if (errText.includes("insufficient_quota") || errText.includes("credit_balance_exhausted") || errText.includes("no credits remaining")) {
-              return NextResponse.json(
-                { error: "Votre solde de compte OpenAI est épuisé ($0 de crédit restant). Veuillez ajouter des crédits sur platform.openai.com/settings/organization/billing ou utiliser une clé gratuite Groq (gsk_...)." },
-                { status: 402 }
-              );
+              console.warn("Solde OpenAI épuisé, basculement vers Groq / Hugging Face si disponible...");
+              if (!groqKey && !hfKey) {
+                return NextResponse.json(
+                  { error: "Votre solde de compte OpenAI est épuisé ($0 de crédit restant). Veuillez ajouter des crédits sur platform.openai.com/settings/organization/billing ou utiliser une clé gratuite Groq (gsk_...)." },
+                  { status: 402 }
+                );
+              }
+              break; // Bascule vers Groq ou Hugging Face
             }
 
             if (whisperRes.status === 429 || whisperRes.status >= 500) {
