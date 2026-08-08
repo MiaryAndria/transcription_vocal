@@ -23,21 +23,21 @@ export default function ApiKeyModal({ apiKey, onSaveApiKey }) {
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
           <Text style={styles.toggleBtnText}>
-            Clé API Hugging Face {apiKey ? "(Configurée)" : "(Recommandée)"}
+            Clé API OpenAI / Groq / HF {apiKey ? "(Configurée)" : "(Optionnel)"}
           </Text>
         </View>
       </TouchableOpacity>
 
       {isOpen && (
         <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Configuration Clé API Hugging Face</Text>
+          <Text style={styles.modalTitle}>Configuration Clé API (OpenAI / Groq / Hugging Face)</Text>
           <Text style={styles.modalSub}>
-            Collez votre Token d'accès gratuit Hugging Face (disponible sur huggingface.co/settings/tokens avec permission Read) pour un accès illimité.
+            Entrez votre clé API OpenAI (`sk-...`), Groq (`gsk_...`) ou Hugging Face (`hf_...`). Pour une transcription en malgache écrit parfait et fluide (qualité ChatGPT), une clé OpenAI ou Groq est idéale !
           </Text>
 
           <TextInput
             style={styles.input}
-            placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxx"
+            placeholder="sk-... / gsk_... / hf_..."
             value={keyInput}
             onChangeText={setKeyInput}
             secureTextEntry={true}

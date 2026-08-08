@@ -31,19 +31,142 @@ export async function POST(request) {
       return NextResponse.json({ error: "Aucun fichier audio reçu" }, { status: 400 });
     }
 
-    // Récupération de la clé API (envoyée dans les en-têtes ou variable d'environnement)
+    // Récupération de la clé API (soit envoyée par le client, soit en variable d'environnement)
     const userApiKey = request.headers.get("x-hf-api-key");
-    const apiKey = (userApiKey || process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
+    const apiKey = (userApiKey || process.env.OPENAI_API_KEY || process.env.GROQ_API_KEY || process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
     const base64Audio = Buffer.from(audioData).toString('base64');
 
+    // 1. Si la clé est une clé OpenAI (sk-...) -> Utilisation de OpenAI Whisper + Perfectionnement ChatGPT (GPT-4o-mini)
+    if (apiKey.startsWith("sk-")) {
+      try {
+        const formData = new FormData();
+        const blob = new Blob([audioData], { type: 'audio/wav' });
+        formData.append('file', blob, 'audio.wav');
+        formData.append('model', 'whisper-1');
+        formData.append('language', 'mg');
+        formData.append('prompt', "Transcription audio amin'ny teny malagasy madio sy mazava:");
+
+        const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: formData
+        });
+
+        if (whisperRes.ok) {
+          const wData = await whisperRes.json();
+          let text = wData.text || "";
+
+          // Perfectionnement via GPT-4o-mini pour restituer du vrai malgache naturel
+          try {
+            const gptRes = await fetch("https://api.openai.com/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                model: "gpt-4o-mini",
+                messages: [
+                  {
+                    role: "system",
+                    content: "Ianao dia mpanitsy teny malagasy. Correct and polish the following raw audio transcription into clean, natural, human-written Malagasy text (e.g. 'Zay mampatonga anah rehefa pro...'). Keep the exact original meaning and spoken Malagasy words. Do NOT translate to French. Output ONLY the polished Malagasy text."
+                  },
+                  {
+                    role: "user",
+                    content: text
+                  }
+                ],
+                temperature: 0.2
+              })
+            });
+
+            if (gptRes.ok) {
+              const gData = await gptRes.json();
+              if (gData.choices && gData.choices[0] && gData.choices[0].message) {
+                text = gData.choices[0].message.content.trim();
+              }
+            }
+          } catch (e) {
+            console.warn("GPT polish warning:", e);
+          }
+
+          return NextResponse.json({ text });
+        }
+      } catch (err) {
+        console.warn("OpenAI API error, fallback to HF:", err);
+      }
+    }
+
+    // 2. Si la clé est une clé Groq (gsk_...) -> Groq Whisper + Llama 3.3 70B
+    if (apiKey.startsWith("gsk_")) {
+      try {
+        const formData = new FormData();
+        const blob = new Blob([audioData], { type: 'audio/wav' });
+        formData.append('file', blob, 'audio.wav');
+        formData.append('model', 'whisper-large-v3');
+        formData.append('language', 'mg');
+
+        const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`
+          },
+          body: formData
+        });
+
+        if (groqRes.ok) {
+          const gData = await groqRes.json();
+          let text = gData.text || "";
+
+          try {
+            const llmRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                  {
+                    role: "system",
+                    content: "Ianao dia mpanitsy teny malagasy. Correct and polish the following raw audio transcription into clean, natural, human-written Malagasy text (e.g. 'Zay mampatonga anah rehefa pro...'). Keep the exact original meaning and spoken Malagasy words. Do NOT translate to French. Output ONLY the polished Malagasy text."
+                  },
+                  {
+                    role: "user",
+                    content: text
+                  }
+                ],
+                temperature: 0.2
+              })
+            });
+
+            if (llmRes.ok) {
+              const lData = await llmRes.json();
+              if (lData.choices && lData.choices[0] && lData.choices[0].message) {
+                text = lData.choices[0].message.content.trim();
+              }
+            }
+          } catch (e) {
+            console.warn("Groq LLM polish warning:", e);
+          }
+
+          return NextResponse.json({ text });
+        }
+      } catch (err) {
+        console.warn("Groq API error, fallback to HF:", err);
+      }
+    }
+
+    // 3. Fallback Hugging Face Router
     let lastError = null;
 
-    // Tentative sur les endpoints d'inférence Hugging Face avec forçage de la langue malgache
     for (const endpoint of HUGGINGFACE_ENDPOINTS) {
       try {
-        const authHeaders = apiKey ? { "Authorization": `Bearer ${apiKey}` } : {};
+        const authHeaders = (apiKey && apiKey.startsWith("hf_")) ? { "Authorization": `Bearer ${apiKey}` } : {};
 
-        // Tentative 1 : Payload JSON avec paramètre de langue malgache et anti-répétition
         let response = await fetch(endpoint, {
           method: "POST",
           headers: {
@@ -63,7 +186,6 @@ export async function POST(request) {
           }),
         });
 
-        // Tentative 2 : Fallback binaire brut si le JSON échoue
         if (!response.ok && response.status !== 401 && response.status !== 503) {
           response = await fetch(endpoint, {
             method: "POST",
@@ -93,14 +215,14 @@ export async function POST(request) {
 
         if (response.status === 503) {
           return NextResponse.json(
-            { error: "Le modèle IA est en cours de chargement sur Hugging Face. Nouvelle tentative automatique..." },
+            { error: "Le modèle IA est en cours de chargement. Nouvelle tentative automatique..." },
             { status: 503 }
           );
         }
 
         if (response.status === 401) {
           return NextResponse.json(
-            { error: "Accès non autorisé (Statut 401). Une clé API Hugging Face (hf_...) est requise. Veuillez renseigner votre Token gratuit dans l'option 'Clé API Hugging Face' en haut de la page." },
+            { error: "Accès non autorisé (Statut 401). Une clé API valide (OpenAI sk-..., Groq gsk_... ou Hugging Face hf_...) est requise." },
             { status: 401 }
           );
         }
@@ -121,5 +243,6 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 
