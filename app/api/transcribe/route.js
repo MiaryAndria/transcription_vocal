@@ -177,7 +177,14 @@ Règles strictes :
                 messages: [
                   {
                     role: "system",
-                    content: "Ianao dia mpanitsy teny malagasy. Correct and polish the raw audio transcription into clean, natural, human-written Malagasy text (e.g. 'Zay mampatonga anah rehefa pro...'). Keep exact original meaning. Output ONLY polished Malagasy text."
+                    content: `Ianao dia mpanitsy teny malagasy sy mpandika teny matihanina.
+Étape 1 : Analyse le sens exact de cette transcription audio malgache brute.
+Étape 2 : Traduis-la mentalement en français naturel pour bien comprendre le contexte et toutes les phrases.
+Étape 3 : Rédige le texte final en VRAI MALGACHE ÉCRIT, naturel, fluide et idiomatique (par exemple : 'Zay mampatonga anah rehefa pro iny ahantoko aloha...').
+Règles strictes :
+- Garde 100% du sens et des mots d'origine du vocal.
+- Ne traduis PAS le résultat final en français, retourne UNIQUEMENT le texte final rédigé en malgache naturel.
+- Corrige l'orthographe phonétique et supprime les hésitations/répétitions inutiles.`
                   },
                   {
                     role: "user",
