@@ -3,9 +3,10 @@ import { NextResponse } from 'next/server';
 export const maxDuration = 60; // 60 seconds max execution on Vercel
 
 const HUGGINGFACE_ENDPOINTS = [
-  "https://api-inference.huggingface.co/models/openai/whisper-large-v3",
-  "https://api-inference.huggingface.co/models/openai/whisper-large-v3-turbo",
-  "https://router.huggingface.co/hf-inference/v1/audio/transcriptions",
+  "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3-turbo",
+  "https://router.huggingface.co/hf-inference/models/openai/whisper-large-v3",
+  "https://router.huggingface.co/hf-inference/models/openai/whisper-small",
+  "https://router.huggingface.co/hf-inference/models/openai/whisper-medium",
 ];
 
 export async function POST(request) {
