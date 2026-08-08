@@ -1,5 +1,3 @@
 {
-  "buildCommand": "npx expo export -p web",
-  "outputDirectory": "dist",
-  "framework": null
+  "framework": "nextjs"
 }
