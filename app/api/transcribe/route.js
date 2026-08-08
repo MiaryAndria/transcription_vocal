@@ -9,16 +9,48 @@ const HUGGINGFACE_ENDPOINTS = [
 
 function cleanRepetitiveText(text) {
   if (!text) return '';
+  
+  // Méta-hallucinations fréquentes de Whisper quand l'audio contient des silences ou bruits
+  const hallucinationPatterns = [
+    /tsy (dia )?azo ny fandikana/i,
+    /teny (ilay )?dia tsy teny malagasy/i,
+    /fehezanteny (ilay )?dia tsy fehezanteny/i,
+    /fandikana (ilay )?dia tsy (andikana|fandikana) malagasy/i,
+    /tsy afaka (ny )?fandikana/i,
+    /tsy voatery afa-tsy/i,
+    /ara-karana kini shan piashani/i,
+    /mety ho hita fa ny teny ilay/i
+  ];
+
   const sentences = text.split(/(?<=[.!?])\s+/);
   const cleaned = [];
+  const seenSentencesCount = new Map();
+
   for (const s of sentences) {
     const trimmed = s.trim();
     if (!trimmed) continue;
+
+    // 1. Filtrer les méta-hallucinations de Whisper
+    if (hallucinationPatterns.some(pattern => pattern.test(trimmed))) {
+      continue;
+    }
+
+    // 2. Éliminer les répétitions en boucle (si une phrase se répète plus de 2 fois)
+    const norm = trimmed.toLowerCase().replace(/[^\w\s]/g, '');
+    if (norm.length > 5) {
+      const count = seenSentencesCount.get(norm) || 0;
+      if (count >= 2) continue;
+      seenSentencesCount.set(norm, count + 1);
+    }
+
+    // 3. Éliminer deux phrases consécutives identiques
     if (cleaned.length > 0 && cleaned[cleaned.length - 1].toLowerCase() === trimmed.toLowerCase()) {
       continue;
     }
+
     cleaned.push(trimmed);
   }
+
   return cleaned.join(' ');
 }
 
@@ -95,7 +127,7 @@ export async function POST(request) {
 Règles strictes :
 - Garde 100% du sens et des mots d'origine du vocal.
 - Ne traduis PAS le résultat final en français, retourne UNIQUEMENT le texte final rédigé en malgache naturel.
-- Corrige l'orthographe phonétique et supprime les hésitations/répétitions inutiles.`
+- Supprime les méta-commentaires, hésitations ou répétons inutile.`
                     },
                     {
                       role: "user",
@@ -111,7 +143,7 @@ Règles strictes :
                 if (gData.choices && gData.choices[0] && gData.choices[0].message) {
                   const polishedText = gData.choices[0].message.content.trim();
                   if (polishedText) {
-                    return NextResponse.json({ text: polishedText });
+                    return NextResponse.json({ text: cleanRepetitiveText(polishedText) });
                   }
                 }
               }
@@ -119,7 +151,7 @@ Règles strictes :
               console.warn("GPT polish warning:", e);
             }
 
-            return NextResponse.json({ text: rawText });
+            return NextResponse.json({ text: cleanRepetitiveText(rawText) });
           } else {
             const errText = await whisperRes.text();
             console.warn(`OpenAI Whisper tentative ${attempt} non OK (${whisperRes.status}):`, errText);
@@ -156,6 +188,7 @@ Règles strictes :
         formData.append('file', blob, 'audio.wav');
         formData.append('model', 'whisper-large-v3');
         formData.append('language', 'mg');
+        formData.append('prompt', "Transcription audio amin'ny teny malagasy madio sy mazava:");
 
         const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
@@ -167,7 +200,11 @@ Règles strictes :
 
         if (groqRes.ok) {
           const gData = await groqRes.json();
-          let text = gData.text || "";
+          let text = cleanRepetitiveText(gData.text || "");
+
+          if (!text) {
+            return NextResponse.json({ text: "" });
+          }
 
           try {
             const llmRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -188,7 +225,7 @@ Règles strictes :
 Règles strictes :
 - Garde 100% du sens et des mots d'origine du vocal.
 - Ne traduis PAS le résultat final en français, retourne UNIQUEMENT le texte final rédigé en malgache naturel.
-- Corrige l'orthographe phonétique et supprime les hésitations/répétitions inutiles.`
+- Supprime impérativement les méta-commentaires, les phrases répétées en boucle (ex: 'Tsy dia azo ny fandikana...'), et retiens uniquement le contenu parlé authentique.`
                   },
                   {
                     role: "user",
@@ -202,14 +239,17 @@ Règles strictes :
             if (llmRes.ok) {
               const lData = await llmRes.json();
               if (lData.choices && lData.choices[0] && lData.choices[0].message) {
-                text = lData.choices[0].message.content.trim();
+                const cleanedLlm = cleanRepetitiveText(lData.choices[0].message.content.trim());
+                if (cleanedLlm) {
+                  text = cleanedLlm;
+                }
               }
             }
           } catch (e) {
             console.warn("Groq LLM polish warning:", e);
           }
 
-          return NextResponse.json({ text });
+          return NextResponse.json({ text: cleanRepetitiveText(text) });
         }
       } catch (err) {
         console.warn("Groq API error:", err);
