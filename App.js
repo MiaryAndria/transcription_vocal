@@ -74,14 +74,14 @@ export default function App() {
     setFullTranscription('');
 
     try {
-      // Étape 1 : Découpage audio + Normalisation pour voix basses
-      const { chunks } = await sliceAudioIntoChunks(file, 30);
-      setProgressInfo({ completed: 0, total: chunks.length, percent: 0, currentText: '' });
+      // Étape 1 : Découpage audio (60s par morceau pour vitesse maximale) + Normalisation pour voix basses
+      const { chunks, durationSec } = await sliceAudioIntoChunks(file, 60);
+      setProgressInfo({ completed: 0, total: chunks.length, percent: 0, currentText: '', chunkSec: 60 });
 
-      // Étape 2 : Traitement IA séquentiel/parallèle via OpenAI Whisper
+      // Étape 2 : Traitement IA parallèle (5 requêtes en simultané)
       const results = await processAudioChunksBatch(chunks, apiKey, (completed, total, latestText) => {
         const percent = Math.round((completed / total) * 100);
-        setProgressInfo({ completed, total, percent, currentText: latestText });
+        setProgressInfo({ completed, total, percent, currentText: latestText, chunkSec: 60 });
       });
 
       // Étape 3 : Consolidation du texte
@@ -204,7 +204,7 @@ export default function App() {
             </View>
 
             <Text style={styles.progressDetailText}>
-              Segment {progressInfo.completed} sur {progressInfo.total} ({formatTime(progressInfo.completed * 30)} traités)
+              Segment {progressInfo.completed} sur {progressInfo.total} ({formatTime(progressInfo.completed * (progressInfo.chunkSec || 60))} traités)
             </Text>
             {progressInfo.currentText ? (
               <Text style={styles.liveSnippetText}>

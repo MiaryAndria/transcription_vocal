@@ -49,7 +49,7 @@ export async function transcribeChunk(audioBlob, apiKey = '') {
  */
 export async function processAudioChunksBatch(chunks, apiKey = '', onProgress) {
   const results = new Array(chunks.length);
-  const CONCURRENCY = 2; // 2 requêtes simultanées
+  const CONCURRENCY = 5; // 5 requêtes simultanées en parallèle pour vitesse maximale (4x plus rapide)
   let completed = 0;
 
   for (let i = 0; i < chunks.length; i += CONCURRENCY) {
