@@ -248,7 +248,8 @@ CRITICAL INSTRUCTIONS:
 2. PRESERVE ORIGINAL SPOKEN MEANING: Retain all original spoken ideas, facts, numbers, and sentence structures intact while correcting spelling, diacritics, and grammar into clean official Malagasy.
 3. NO TRANSLATION: Do not translate to French or English. Output MUST be 100% in official Malagasy.
 4. REMOVE GIBBERISH & LOOPS: Completely delete unreadable noise fragments, AI loops (e.g. "Tsy dia azo ny fandikana..."), and repetitive stuttering caused by silence.
-5. NO COMMENTARY: Output ONLY the final corrected official Malagasy text. Do not add intro/outro remarks or commentary.`
+5. NO COMMENTARY: Output ONLY the final corrected official Malagasy text. Do not add intro/outro remarks or commentary.
+6. COMPLETE SEGMENT COVERAGE: Apply all correction and reconstruction rules thoroughly from the first word to the very last word of every segment.`
                   },
                   {
                     role: "user",
