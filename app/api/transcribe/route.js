@@ -91,14 +91,13 @@ export async function POST(request) {
     const MALAGASY_DICTIONARY_PROMPT = 
       "Firaketana teny malagasy ofisialy sy fampiasan-teny eto Madagasikara: " +
       "fanjakana, lalàna, mpiasa, sendika, komity, mpitantana, orinasa, fivoriana, solontena, " +
-      "fitantanana, fifanarahana, dinika, fiarahamonina, karama, fisotroan-dronono, fahasalamana, fiarovana, " +
-      "fampandrosoana, fivoarana, fanabeazana, fahalalana, raharaha, fananana, tombony, olana, vahaolana, " +
+      "fitantanana, fifanarahana, dinika, fiarahamonina, karama, fisotroan-dronono, fahasalamana, " +
+      "fampandrosoana, fivoarana, fanabeazana, fahalalana, raharaha, fananana, tombony, vahaolana, " +
       "fifandraisana, tatitra, fanapahan-kevitra, fanohanana, tetikasa, tetibola, fepetra, fitaovana, " +
       "rafitra, fitsipika, adidy, zo, filoha, sekretera, mpikambana, fihaonambe, delegasiona, birao, " +
       "teny, fehezanteny, zava-misy, mponina, fiainana, fihavanana, firaisankina, fahombiazana, fahendrena, " +
       "kolontsaina, tantara, fizotran'ny asa, famokarana, varotra, toe-karena, fihariana, teknolojia, " +
-      "olona, mpiray tanindrazana, fiaraha-miasa, fandraisana an-tanana, fanasongadinana, fankatoavana, " +
-      "fananganana, fanazavana, fampahalalana, fitsaboana, fahalalahana, demokrasia, rariny, hitsiny.";
+      "olona, fiaraha-miasa, fandraisana an-tanana, fankatoavana, fananganana, fanazavana, fahalalahana, rariny.";
 
     // 1. Essai avec OpenAI (Priorité pour qualité 99% + Pipeline 3 étapes ChatGPT)
     if (openaiKey) {
