@@ -76,12 +76,12 @@ export async function POST(request) {
     // Clés spécifiques par service (client ou variables d'environnement Vercel)
     const openaiKey = clientKey.startsWith("sk-") ? clientKey : (process.env.OPENAI_API_KEY || "").trim();
     const groqKey = clientKey.startsWith("gsk_") ? clientKey : (process.env.GROQ_API_KEY || process.env.GROK_API_KEY || process.env.grok_api_key || process.env.groq_api_key || "").trim();
-    const hfKey = clientKey.startsWith("hf_") ? clientKey : (process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
+    const hfKey = (clientKey.startsWith("hf_") && !groqKey) ? clientKey : (process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
 
     // Si aucune clé n'est disponible, renvoyer un message clair immédiatement
     if (!openaiKey && !groqKey && !hfKey) {
       return NextResponse.json(
-        { error: "Aucune clé API configurée. Ajoutez OPENAI_API_KEY, GROQ_API_KEY ou HUGGINGFACE_API_KEY sur Vercel." },
+        { error: "Aucune clé API configurée. Ajoutez GROQ_API_KEY (gsk_...) sur Vercel ou dans les paramètres du site." },
         { status: 401 }
       );
     }
@@ -274,9 +274,20 @@ CRITICAL INSTRUCTIONS:
           }
 
           return NextResponse.json({ text: cleanRepetitiveText(text) });
+        } else {
+          const errText = await groqRes.text();
+          console.warn(`Groq API Whisper error (${groqRes.status}):`, errText);
+          return NextResponse.json(
+            { error: `Erreur API Groq (${groqRes.status}): ${errText || 'Erreur de clé ou de service Groq'}` },
+            { status: groqRes.status || 500 }
+          );
         }
       } catch (err) {
         console.warn("Groq API error:", err);
+        return NextResponse.json(
+          { error: `Erreur de connexion API Groq: ${err.message}` },
+          { status: 500 }
+        );
       }
     }
 
