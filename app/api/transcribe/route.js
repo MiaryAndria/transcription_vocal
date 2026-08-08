@@ -249,6 +249,27 @@ Règles strictes :
             return NextResponse.json({ text: cleanRepetitiveText(text) });
           }
 
+          if (response.status === 503) {
+            return NextResponse.json(
+              { error: "Le modèle IA est en cours de chargement sur Hugging Face. Nouvelle tentative automatique..." },
+              { status: 503 }
+            );
+          }
+
+          if (response.status === 402) {
+            return NextResponse.json(
+              { error: "Les crédits gratuits du compte Hugging Face sont épuisés (Erreur 402). Veuillez entrer votre clé API OpenAI (sk-...) ou Groq (gsk_...) dans les paramètres du site pour continuer." },
+              { status: 402 }
+            );
+          }
+
+          if (response.status === 401) {
+            return NextResponse.json(
+              { error: "Accès non autorisé (Statut 401). Une clé API valide (OpenAI sk-..., Groq gsk_... ou Hugging Face hf_...) est requise." },
+              { status: 401 }
+            );
+          }
+
           const errText = await response.text();
           lastError = `Statut ${response.status}: ${errText.substring(0, 150)}`;
         } catch (e) {

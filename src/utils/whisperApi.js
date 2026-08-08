@@ -70,7 +70,7 @@ export async function processAudioChunksBatch(chunks, apiKey = '', onProgress) {
             await new Promise((r) => setTimeout(r, 4000));
           } else if (res.error) {
             console.warn(`Morceau ${index} (min ${Math.floor(chunk.startTime / 60)}) tentative ${attempts} échouée:`, res.error);
-            if (res.error.includes("401") || res.error.includes("Accès non autorisé")) {
+            if (res.error.includes("401") || res.error.includes("402") || res.error.includes("Accès non autorisé") || res.error.includes("crédits")) {
               throw new Error(res.error);
             }
             await new Promise((r) => setTimeout(r, 1000 * attempts));
