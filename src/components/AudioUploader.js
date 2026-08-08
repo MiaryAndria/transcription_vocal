@@ -57,13 +57,13 @@ export default function AudioUploader({ onFileSelected, disabled }) {
           style={{ display: 'none' }}
         />
         <label htmlFor="audioFileInput" style={{ cursor: disabled ? 'not-allowed' : 'pointer', display: 'block' }}>
-          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
+          <View style={{ marginBottom: 12, alignItems: 'center' }}>
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 18V5l12-2v13" />
               <circle cx="6" cy="18" r="3" />
               <circle cx="18" cy="16" r="3" />
             </svg>
-          </div>
+          </View>
           <Text style={styles.title}>
             {selectedFile ? selectedFile.name : "Cliquez ici ou déposez votre fichier audio"}
           </Text>

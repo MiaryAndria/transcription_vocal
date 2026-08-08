@@ -46,7 +46,7 @@ export default function TranscriptionViewer({ fullText, audioFileName }) {
 
         <View style={styles.btnRow}>
           <TouchableOpacity style={styles.actionBtn} onPress={handleCopy}>
-            <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+            <View style={{ alignItems: 'center', flexDirection: 'row', gap: 6 }}>
               {copied ? (
                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#16a34a" strokeWidth="2.5">
                   <polyline points="20 6 9 17 4 12" />
@@ -60,11 +60,11 @@ export default function TranscriptionViewer({ fullText, audioFileName }) {
               <Text style={[styles.actionBtnText, copied && { color: '#16a34a' }]}>
                 {copied ? "Copié !" : "Copier"}
               </Text>
-            </div>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity style={[styles.actionBtn, styles.downloadBtn]} onPress={handleDownload}>
-            <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+            <View style={{ alignItems: 'center', flexDirection: 'row', gap: 6 }}>
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                 <polyline points="7 10 12 15 17 10" />
@@ -73,19 +73,19 @@ export default function TranscriptionViewer({ fullText, audioFileName }) {
               <Text style={[styles.actionBtnText, styles.downloadBtnText]}>
                 Télécharger (.txt)
               </Text>
-            </div>
+            </View>
           </TouchableOpacity>
         </View>
       </View>
 
       {/* Champ de recherche */}
       <View style={styles.searchBox}>
-        <div style={{ display: 'flex', alignItems: 'center', marginRight: 8 }}>
+        <View style={{ alignItems: 'center', marginRight: 8 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2">
             <circle cx="11" cy="11" r="8" />
             <line x1="21" y1="21" x2="16.65" y2="16.65" />
           </svg>
-        </div>
+        </View>
         <TextInput
           style={styles.searchInput}
           placeholder="Rechercher dans le texte..."

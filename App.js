@@ -96,14 +96,14 @@ export default function App() {
         {/* En-tête de l'application */}
         <View style={styles.header}>
           <View style={styles.logoRow}>
-            <div style={{ display: 'flex', alignItems: 'center', marginRight: 12 }}>
+            <View style={{ alignItems: 'center', marginRight: 12 }}>
               <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                 <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
                 <line x1="12" y1="19" x2="12" y2="23" />
                 <line x1="8" y1="23" x2="16" y2="23" />
               </svg>
-            </div>
+            </View>
             <View>
               <Text style={styles.appTitle}>Transcription Audio Malgache</Text>
               <Text style={styles.appSubtitle}>Service IA Haute Précision (Prise en charge jusqu'à 80 min)</Text>
@@ -121,7 +121,7 @@ export default function App() {
               style={[styles.modeBtn, selectedMode === 'sync' && styles.modeBtnActive]}
               onPress={() => setSelectedMode('sync')}
             >
-              <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
+              <View style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={selectedMode === 'sync' ? '#ffffff' : '#475569'} strokeWidth="2">
                   <path d="M3 18v-6a9 9 0 0 1 18 0v6" />
                   <path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z" />
@@ -129,21 +129,21 @@ export default function App() {
                 <Text style={[styles.modeBtnText, selectedMode === 'sync' && styles.modeBtnTextActive]}>
                   1. Écoute + Transcription Synchronisée
                 </Text>
-              </div>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.modeBtn, selectedMode === 'direct' && styles.modeBtnActive]}
               onPress={() => setSelectedMode('direct')}
             >
-              <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 8 }}>
+              <View style={{ alignItems: 'center', flexDirection: 'row', gap: 8 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={selectedMode === 'direct' ? '#ffffff' : '#475569'} strokeWidth="2">
                   <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
                 </svg>
                 <Text style={[styles.modeBtnText, selectedMode === 'direct' && styles.modeBtnTextActive]}>
                   2. Transcription Intégrale Directe
                 </Text>
-              </div>
+              </View>
             </TouchableOpacity>
           </View>
         </View>
@@ -155,7 +155,7 @@ export default function App() {
               style={[styles.tabItem, activeTab === 'upload' && styles.tabItemActive]}
               onPress={() => setActiveTab('upload')}
             >
-              <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+              <View style={{ alignItems: 'center', flexDirection: 'row', gap: 6 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'upload' ? '#4f46e5' : '#64748b'} strokeWidth="2">
                   <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z" />
                   <polyline points="13 2 13 9 20 9" />
@@ -163,14 +163,14 @@ export default function App() {
                 <Text style={[styles.tabText, activeTab === 'upload' && styles.tabTextActive]}>
                   Fichier Audio (Importation)
                 </Text>
-              </div>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.tabItem, activeTab === 'record' && styles.tabItemActive]}
               onPress={() => setActiveTab('record')}
             >
-              <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+              <View style={{ alignItems: 'center', flexDirection: 'row', gap: 6 }}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={activeTab === 'record' ? '#4f46e5' : '#64748b'} strokeWidth="2">
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" />
                   <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
@@ -178,7 +178,7 @@ export default function App() {
                 <Text style={[styles.tabText, activeTab === 'record' && styles.tabTextActive]}>
                   Enregistrement Microphone
                 </Text>
-              </div>
+              </View>
             </TouchableOpacity>
           </View>
 
