@@ -123,6 +123,14 @@ Règles strictes :
           } else {
             const errText = await whisperRes.text();
             console.warn(`OpenAI Whisper tentative ${attempt} non OK (${whisperRes.status}):`, errText);
+            
+            if (errText.includes("insufficient_quota") || errText.includes("credit_balance_exhausted") || errText.includes("no credits remaining")) {
+              return NextResponse.json(
+                { error: "Votre solde de compte OpenAI est épuisé ($0 de crédit restant). Veuillez ajouter des crédits sur platform.openai.com/settings/organization/billing ou utiliser une clé gratuite Groq (gsk_...)." },
+                { status: 402 }
+              );
+            }
+
             if (whisperRes.status === 429 || whisperRes.status >= 500) {
               await new Promise((r) => setTimeout(r, 1500 * attempt));
               continue;
