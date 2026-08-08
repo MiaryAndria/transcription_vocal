@@ -14,8 +14,17 @@ export default function AudioPlayerSync({ audioUrl, segments }) {
   useEffect(() => {
     if (audioRef.current) {
       audioRef.current.playbackRate = playbackRate;
+      audioRef.current.defaultPlaybackRate = playbackRate;
     }
   }, [playbackRate]);
+
+  const changePlaybackRate = (rate) => {
+    setPlaybackRate(rate);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = rate;
+      audioRef.current.defaultPlaybackRate = rate;
+    }
+  };
 
   const handleTimeUpdate = () => {
     if (!audioRef.current) return;
@@ -35,6 +44,15 @@ export default function AudioPlayerSync({ audioUrl, segments }) {
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      audioRef.current.playbackRate = playbackRate;
+      audioRef.current.defaultPlaybackRate = playbackRate;
+    }
+  };
+
+  const handlePlay = () => {
+    setIsPlaying(true);
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate;
     }
   };
 
@@ -77,6 +95,7 @@ export default function AudioPlayerSync({ audioUrl, segments }) {
         src={audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
+        onPlay={handlePlay}
         onEnded={() => setIsPlaying(false)}
         style={{ display: 'none' }}
       />
@@ -120,7 +139,7 @@ export default function AudioPlayerSync({ audioUrl, segments }) {
             {[1.0, 1.25, 1.5, 2.0].map((rate) => (
               <TouchableOpacity
                 key={rate}
-                onPress={() => setPlaybackRate(rate)}
+                onPress={() => changePlaybackRate(rate)}
                 style={[styles.rateBtn, playbackRate === rate && styles.rateBtnActive]}
               >
                 <Text style={[styles.rateText, playbackRate === rate && styles.rateTextActive]}>

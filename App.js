@@ -13,6 +13,7 @@ import AudioUploader from './src/components/AudioUploader';
 import MicrophoneRecorder from './src/components/MicrophoneRecorder';
 import AudioPlayerSync from './src/components/AudioPlayerSync';
 import TranscriptionViewer from './src/components/TranscriptionViewer';
+import ApiKeyModal from './src/components/ApiKeyModal';
 import { sliceAudioIntoChunks, formatTime } from './src/utils/audioChunker';
 import { processAudioChunksBatch } from './src/utils/whisperApi';
 
@@ -22,6 +23,21 @@ export default function App() {
   const [audioFile, setAudioFile] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
   
+  // Clé API Hugging Face
+  const [apiKey, setApiKey] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('hf_api_key') || '';
+    }
+    return '';
+  });
+
+  const handleSaveApiKey = (newKey) => {
+    setApiKey(newKey);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hf_api_key', newKey);
+    }
+  };
+
   // States d'exécution
   const [isProcessing, setIsProcessing] = useState(false);
   const [progressInfo, setProgressInfo] = useState({ completed: 0, total: 0, percent: 0, currentText: '' });
@@ -56,7 +72,7 @@ export default function App() {
       setProgressInfo({ completed: 0, total: chunks.length, percent: 0, currentText: '' });
 
       // Étape 2 : Traitement IA séquentiel/parallèle via OpenAI Whisper
-      const results = await processAudioChunksBatch(chunks, "", (completed, total, latestText) => {
+      const results = await processAudioChunksBatch(chunks, apiKey, (completed, total, latestText) => {
         const percent = Math.round((completed / total) * 100);
         setProgressInfo({ completed, total, percent, currentText: latestText });
       });
@@ -93,6 +109,8 @@ export default function App() {
               <Text style={styles.appSubtitle}>Service IA Haute Précision (Prise en charge jusqu'à 80 min)</Text>
             </View>
           </View>
+
+          <ApiKeyModal apiKey={apiKey} onSaveApiKey={handleSaveApiKey} />
         </View>
 
         {/* Sélection du mode de transcription */}

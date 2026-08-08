@@ -16,36 +16,62 @@ export async function POST(request) {
       return NextResponse.json({ error: "Aucun fichier audio reçu" }, { status: 400 });
     }
 
+    // Récupération de la clé API (envoyée dans les en-têtes ou variable d'environnement)
+    const userApiKey = request.headers.get("x-hf-api-key");
+    const apiKey = (userApiKey || process.env.HUGGINGFACE_API_KEY || process.env.HF_TOKEN || "").trim();
+
     let lastError = null;
 
-    // Try endpoints with auto-fallback
+    // Tentative sur les endpoints d'inférence Hugging Face
     for (const endpoint of HUGGINGFACE_ENDPOINTS) {
       try {
+        const headers = {
+          "Content-Type": "audio/wav",
+          "x-wait-for-model": "true",
+        };
+
+        if (apiKey) {
+          headers["Authorization"] = `Bearer ${apiKey}`;
+        }
+
         const response = await fetch(endpoint, {
           method: "POST",
-          headers: {
-            "Content-Type": "audio/wav",
-            "x-wait-for-model": "true",
-          },
+          headers,
           body: audioData,
         });
 
         if (response.ok) {
           const result = await response.json();
-          const text = result.text || (result.chunks ? result.chunks.map(c => c.text).join(' ') : "");
+          let text = "";
+          if (typeof result === 'string') {
+            text = result;
+          } else if (result && result.text) {
+            text = result.text;
+          } else if (Array.isArray(result) && result[0] && result[0].text) {
+            text = result[0].text;
+          } else if (result && result.chunks) {
+            text = result.chunks.map(c => c.text).join(' ');
+          }
           return NextResponse.json({ text: text || "" });
         }
 
         if (response.status === 503) {
-          // Model is loading
+          // Le modèle se charge sur Hugging Face
           return NextResponse.json(
-            { error: "Le modèle IA est en cours de chargement sur le serveur. Réessai automatique dans 5 secondes..." },
+            { error: "Le modèle IA est en cours de chargement sur Hugging Face. Nouvelle tentative automatique..." },
             { status: 503 }
           );
         }
 
+        if (response.status === 401) {
+          return NextResponse.json(
+            { error: "Accès non autorisé (Statut 401). Une clé API Hugging Face (hf_...) est requise. Veuillez renseigner votre Token gratuit dans l'option 'Clé API Hugging Face' en haut de la page." },
+            { status: 401 }
+          );
+        }
+
         const errText = await response.text();
-        lastError = `Statut ${response.status}: ${errText}`;
+        lastError = `Statut ${response.status}: ${errText.substring(0, 150)}`;
       } catch (e) {
         lastError = e.message;
       }
@@ -60,3 +86,4 @@ export async function POST(request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

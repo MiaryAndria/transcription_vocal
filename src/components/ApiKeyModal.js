@@ -1,28 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, TextInput, TouchableOpacity } from 'react-native';
 
 export default function ApiKeyModal({ apiKey, onSaveApiKey }) {
   const [keyInput, setKeyInput] = useState(apiKey || '');
   const [isOpen, setIsOpen] = useState(false);
 
+  useEffect(() => {
+    setKeyInput(apiKey || '');
+  }, [apiKey]);
+
   const handleSave = () => {
-    onSaveApiKey(keyInput);
+    onSaveApiKey(keyInput.trim());
     setIsOpen(false);
   };
 
   return (
     <View style={styles.container}>
       <TouchableOpacity style={styles.toggleBtn} onPress={() => setIsOpen(!isOpen)}>
-        <Text style={styles.toggleBtnText}>
-           Key API Hugging Face {apiKey ? "(Actif )" : "(Optionnel )"}
-        </Text>
+        <div style={{ display: 'flex', alignItems: 'center', flexDirection: 'row', gap: 6 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#475569" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+          <Text style={styles.toggleBtnText}>
+            Clé API Hugging Face {apiKey ? "(Configurée)" : "(Recommandée)"}
+          </Text>
+        </div>
       </TouchableOpacity>
 
       {isOpen && (
         <View style={styles.modalBox}>
-          <Text style={styles.modalTitle}>Clé API Hugging Face (Optionnel)</Text>
+          <Text style={styles.modalTitle}>Configuration Clé API Hugging Face</Text>
           <Text style={styles.modalSub}>
-            L'API gratuite par défaut fonctionne directement. Si vous voulez des vitesses encore plus rapides sans limite, collez votre Token gratuit de huggingface.co/settings/tokens
+            Collez votre Token d'accès gratuit Hugging Face (disponible sur huggingface.co/settings/tokens avec permission Read) pour un accès illimité.
           </Text>
 
           <TextInput

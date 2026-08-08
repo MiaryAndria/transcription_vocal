@@ -1,6 +1,6 @@
 export const metadata = {
   title: 'Transcription Audio Malgache',
-  description: 'Application web et mobile de transcription audio en malgache propulsée par OpenAI Whisper.',
+  description: '',
 };
 
 export default function RootLayout({ children }) {
