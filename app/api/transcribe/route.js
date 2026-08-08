@@ -10,16 +10,25 @@ const HUGGINGFACE_ENDPOINTS = [
 function cleanRepetitiveText(text) {
   if (!text) return '';
   
-  // Méta-hallucinations fréquentes de Whisper quand l'audio contient des silences ou bruits
+  // Méta-hallucinations et artefacts fréquents de Whisper (silences, bruits ou erreurs de modèle)
   const hallucinationPatterns = [
-    /tsy (dia )?azo ny fandikana/i,
-    /teny (ilay )?dia tsy teny malagasy/i,
-    /fehezanteny (ilay )?dia tsy fehezanteny/i,
-    /fandikana (ilay )?dia tsy (andikana|fandikana) malagasy/i,
+    /tsy (dia )?azo ny (fandikana|fanoratana)/i,
+    /teny (ilay )?dia (tsy teny|tsy azo)/i,
+    /fehezanteny (ilay )?dia/i,
+    /fandikana (ilay )?dia/i,
+    /aiza ny fehezanteny/i,
     /tsy afaka (ny )?fandikana/i,
     /tsy voatery afa-tsy/i,
-    /ara-karana kini shan piashani/i,
-    /mety ho hita fa ny teny ilay/i
+    /ara-karana kini/i,
+    /mety ho hita fa/i,
+    /audio transcription/i,
+    /language audio/i,
+    /i'm ready to process/i,
+    /please provide the text/i,
+    /you can see what they do/i,
+    /eyebr/i,
+    /madagasy language/i,
+    /transcription comme ceci/i
   ];
 
   const sentences = text.split(/(?<=[.!?])\s+/);
@@ -30,7 +39,7 @@ function cleanRepetitiveText(text) {
     const trimmed = s.trim();
     if (!trimmed) continue;
 
-    // 1. Filtrer les méta-hallucinations de Whisper
+    // 1. Filtrer les méta-hallucinations et artefacts
     if (hallucinationPatterns.some(pattern => pattern.test(trimmed))) {
       continue;
     }
@@ -88,7 +97,8 @@ export async function POST(request) {
           formData.append('file', blob, 'audio.wav');
           formData.append('model', 'whisper-1');
           formData.append('language', 'mg');
-          formData.append('prompt', "Transcription audio amin'ny teny malagasy madio sy mazava:");
+          formData.append('temperature', '0.0');
+          formData.append('prompt', "Fandraisam-peo amin'ny teny malagasy ofisialy sy mahazatra: sendika, komity, mpiasa, lalàna, didy, fivoriana, mpitantana, Madagasikara, fanjakana, orinasa, solontena.");
 
           const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
             method: "POST",
@@ -100,9 +110,9 @@ export async function POST(request) {
 
           if (whisperRes.ok) {
             const wData = await whisperRes.json();
-            let rawText = (wData.text || "").trim();
+            let rawText = cleanRepetitiveText((wData.text || "").trim());
 
-            if (!rawText) {
+            if (!rawText || rawText.length < 3) {
               return NextResponse.json({ text: "" });
             }
 
@@ -125,7 +135,7 @@ Your task is to process raw Malagasy transcriptions and output the EXACT spoken 
 CRITICAL INSTRUCTIONS:
 1. STRICT VERBATIM ACCURACY: Preserve ALL original spoken Malagasy words, dialect vocabulary, slang, numbers, and sentence structures exactly as spoken in the audio. DO NOT rewrite, paraphrase, summarize, or alter the original spoken words.
 2. NO TRANSLATION: Do not translate any text to French or English. The output MUST be 100% in Malagasy.
-3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops (such as "Tsy dia azo ny fandikana...", "teny ilay dia tsy teny malagasy..."), and repetitive stuttering caused by audio noise/silence.
+3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops, English placeholders, and repetitive stuttering caused by audio noise/silence.
 4. CLEAN FORMATTING: Add clean punctuation and capitalization to make the spoken Malagasy text readable without changing any spoken words.
 5. NO EXTRA TEXT: Output ONLY the final cleaned verbatim Malagasy text. Do not add intro/outro remarks or commentary.`
                     },
@@ -141,9 +151,9 @@ CRITICAL INSTRUCTIONS:
               if (gptRes.ok) {
                 const gData = await gptRes.json();
                 if (gData.choices && gData.choices[0] && gData.choices[0].message) {
-                  const polishedText = gData.choices[0].message.content.trim();
-                  if (polishedText) {
-                    return NextResponse.json({ text: cleanRepetitiveText(polishedText) });
+                  const polishedText = cleanRepetitiveText(gData.choices[0].message.content.trim());
+                  if (polishedText && !polishedText.includes("I'm ready to process")) {
+                    return NextResponse.json({ text: polishedText });
                   }
                 }
               }
@@ -151,7 +161,7 @@ CRITICAL INSTRUCTIONS:
               console.warn("GPT polish warning:", e);
             }
 
-            return NextResponse.json({ text: cleanRepetitiveText(rawText) });
+            return NextResponse.json({ text: rawText });
           } else {
             const errText = await whisperRes.text();
             console.warn(`OpenAI Whisper tentative ${attempt} non OK (${whisperRes.status}):`, errText);
@@ -188,7 +198,8 @@ CRITICAL INSTRUCTIONS:
         formData.append('file', blob, 'audio.wav');
         formData.append('model', 'whisper-large-v3');
         formData.append('language', 'mg');
-        formData.append('prompt', "Miresaka amin'ny teny malagasy madio, mazava, araka ny fiteny mahazatra eto Madagasikara (Malagasy language audio transcription).");
+        formData.append('temperature', '0.0');
+        formData.append('prompt', "Fandraisam-peo amin'ny teny malagasy ofisialy sy mahazatra: sendika, komity, mpiasa, lalàna, didy, fivoriana, mpitantana, Madagasikara, fanjakana, orinasa, solontena.");
 
         const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
@@ -200,9 +211,9 @@ CRITICAL INSTRUCTIONS:
 
         if (groqRes.ok) {
           const gData = await groqRes.json();
-          let text = cleanRepetitiveText(gData.text || "");
+          let text = cleanRepetitiveText((gData.text || "").trim());
 
-          if (!text) {
+          if (!text || text.length < 3) {
             return NextResponse.json({ text: "" });
           }
 
@@ -224,7 +235,7 @@ Your task is to process raw Malagasy transcriptions from Groq Whisper and output
 CRITICAL INSTRUCTIONS:
 1. STRICT VERBATIM ACCURACY: Preserve ALL original spoken Malagasy words, dialect vocabulary, slang, numbers, and sentence structures exactly as spoken in the audio. DO NOT rewrite, paraphrase, summarize, or alter the original spoken words.
 2. NO TRANSLATION: Do not translate any text to French or English. The output MUST be 100% in Malagasy.
-3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops (such as "Tsy dia azo ny fandikana...", "teny ilay dia tsy teny malagasy..."), and repetitive stuttering caused by audio noise/silence.
+3. REMOVE HALLUCINATIONS ONLY: Remove AI meta-commentary, AI hallucination loops, English placeholders (e.g. "MADAGASY language audio transcription"), and repetitive stuttering caused by audio noise/silence.
 4. CLEAN FORMATTING: Add clean punctuation and capitalization to make the spoken Malagasy text readable without changing any spoken words.
 5. NO EXTRA TEXT: Output ONLY the final cleaned verbatim Malagasy text. Do not add intro/outro remarks or commentary.`
                   },
@@ -241,7 +252,7 @@ CRITICAL INSTRUCTIONS:
               const lData = await llmRes.json();
               if (lData.choices && lData.choices[0] && lData.choices[0].message) {
                 const cleanedLlm = cleanRepetitiveText(lData.choices[0].message.content.trim());
-                if (cleanedLlm) {
+                if (cleanedLlm && !cleanedLlm.includes("I'm ready to process")) {
                   text = cleanedLlm;
                 }
               }
