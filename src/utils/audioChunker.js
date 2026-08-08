@@ -1,22 +1,17 @@
 /**
- * Audio Chunker & Normalizer for Web / React Native (Web View)
- * Decodes audio, amplifies low voices, and slices into 30-second 16kHz PCM WAV Blobs.
+ * Audio Chunker, Noise Reducer & Voice Normalizer
+ * Cuts background noise, isolates human vocal frequencies (80Hz-4000Hz), amplifies soft voices,
+ * and slices long audio files into 30-second 16kHz PCM WAV Blobs.
  */
 
 /**
  * Encodes an AudioBuffer slice into a 16kHz Mono 16-bit PCM WAV Blob
- * @param {AudioBuffer} audioBuffer 
- * @param {number} startSample 
- * @param {number} endSample 
- * @param {number} gainFactor Dynamic volume amplification factor
- * @returns {Blob}
  */
 function bufferToWavBlob(audioBuffer, startSample, endSample, gainFactor = 1.0) {
   const targetSampleRate = 16000;
   const originalSampleRate = audioBuffer.sampleRate;
   const numChannels = audioBuffer.numberOfChannels;
   
-  // Extract & mix down audio channels to mono
   const numOriginalSamples = endSample - startSample;
   const mixedChannel = new Float32Array(numOriginalSamples);
 
@@ -27,7 +22,7 @@ function bufferToWavBlob(audioBuffer, startSample, endSample, gainFactor = 1.0) 
     }
   }
 
-  // Resample to 16kHz if needed
+  // Resample to 16kHz
   let resampledData;
   if (originalSampleRate === targetSampleRate) {
     resampledData = mixedChannel;
@@ -41,14 +36,12 @@ function bufferToWavBlob(audioBuffer, startSample, endSample, gainFactor = 1.0) 
     }
   }
 
-  // Apply Volume Boost / Gain Factor for soft voices
+  // Apply Volume Boost / Gain Factor with Voice Normalization
   const pcm16Data = new Int16Array(resampledData.length);
   for (let i = 0; i < resampledData.length; i++) {
     let sample = resampledData[i] * gainFactor;
-    // Hard limit / clipping guard [-1.0, 1.0]
     if (sample > 1.0) sample = 1.0;
     if (sample < -1.0) sample = -1.0;
-    // Convert float to 16-bit PCM (-32768 to 32767)
     pcm16Data[i] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
   }
 
@@ -57,26 +50,22 @@ function bufferToWavBlob(audioBuffer, startSample, endSample, gainFactor = 1.0) 
   const buffer = new ArrayBuffer(44 + dataSize);
   const view = new DataView(buffer);
 
-  // RIFF header
   writeString(view, 0, 'RIFF');
   view.setUint32(4, 36 + dataSize, true);
   writeString(view, 8, 'WAVE');
 
-  // fmt chunk
   writeString(view, 12, 'fmt ');
-  view.setUint32(16, 16, true); // Subchunk1Size (16 for PCM)
-  view.setUint16(20, 1, true);  // AudioFormat (1 for PCM)
-  view.setUint16(22, 1, true);  // NumChannels (1 for Mono)
-  view.setUint32(24, targetSampleRate, true); // SampleRate
-  view.setUint32(28, targetSampleRate * 2, true); // ByteRate (SampleRate * NumChannels * BitsPerSample/8)
-  view.setUint16(32, 2, true);  // BlockAlign (NumChannels * BitsPerSample/8)
-  view.setUint16(34, 16, true); // BitsPerSample (16 bits)
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, 1, true);
+  view.setUint32(24, targetSampleRate, true);
+  view.setUint32(28, targetSampleRate * 2, true);
+  view.setUint16(32, 2, true);
+  view.setUint16(34, 16, true);
 
-  // data chunk
   writeString(view, 36, 'data');
   view.setUint32(40, dataSize, true);
 
-  // Write PCM audio data
   const pcmBytes = new Uint8Array(buffer, 44, dataSize);
   pcmBytes.set(new Uint8Array(pcm16Data.buffer));
 
@@ -90,31 +79,71 @@ function writeString(view, offset, string) {
 }
 
 /**
+ * Applies Bandpass Noise Filter (80Hz to 4000Hz) to isolate human voice
+ * and reduce background noise (wind, traffic, AC hum, static noise).
+ * @param {AudioBuffer} audioBuffer 
+ * @returns {Promise<AudioBuffer>}
+ */
+async function applyVoiceNoiseFilter(audioBuffer) {
+  try {
+    const offlineCtx = new (window.OfflineAudioContext || window.webkitOfflineAudioContext)(
+      audioBuffer.numberOfChannels,
+      audioBuffer.length,
+      audioBuffer.sampleRate
+    );
+
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+
+    // High-pass filter at 80Hz (Cuts low rumble, wind noise, hum)
+    const highPass = offlineCtx.createBiquadFilter();
+    highPass.type = 'highpass';
+    highPass.frequency.value = 80;
+
+    // Low-pass filter at 3800Hz (Cuts high hiss, static noise)
+    const lowPass = offlineCtx.createBiquadFilter();
+    lowPass.type = 'lowpass';
+    lowPass.frequency.value = 3800;
+
+    source.connect(highPass);
+    highPass.connect(lowPass);
+    lowPass.connect(offlineCtx.destination);
+
+    source.start(0);
+    return await offlineCtx.startRendering();
+  } catch (err) {
+    console.warn("Noise filter warning, using raw audio:", err);
+    return audioBuffer;
+  }
+}
+
+/**
  * Splits an Audio File/Blob into 30-second normalized WAV chunks
  * @param {Blob|File} audioFile 
- * @param {number} chunkDurationSec Chunk size in seconds (default 30s)
+ * @param {number} chunkDurationSec 
  * @returns {Promise<{chunks: Array<{id: number, blob: Blob, startTime: number, endTime: number}>, durationSec: number}>}
  */
 export async function sliceAudioIntoChunks(audioFile, chunkDurationSec = 30) {
   const arrayBuffer = await audioFile.arrayBuffer();
   const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+  const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+
+  // Apply vocal frequency noise filter
+  const audioBuffer = await applyVoiceNoiseFilter(decodedBuffer);
 
   const durationSec = audioBuffer.duration;
   const sampleRate = audioBuffer.sampleRate;
   const samplesPerChunk = chunkDurationSec * sampleRate;
   const totalSamples = audioBuffer.length;
 
-  // Calculate overall audio peak volume to determine gain boost for soft voice
+  // Calculate dynamic volume gain for soft voices
   let maxPeak = 0.001;
   const channelData = audioBuffer.getChannelData(0);
-  // Sample 1 out of every 50 points to find peak quickly
   for (let i = 0; i < channelData.length; i += 50) {
     const abs = Math.abs(channelData[i]);
     if (abs > maxPeak) maxPeak = abs;
   }
-  // Target peak normalization to ~0.8 (amplifies soft voice while avoiding distortion)
-  const gainFactor = Math.min(4.0, 0.8 / maxPeak);
+  const gainFactor = Math.min(5.0, 0.85 / maxPeak);
 
   const chunks = [];
   let currentSample = 0;
@@ -137,7 +166,6 @@ export async function sliceAudioIntoChunks(audioFile, chunkDurationSec = 30) {
     currentSample = endSample;
   }
 
-  // Close context to release memory
   if (audioContext.state !== 'closed') {
     await audioContext.close();
   }

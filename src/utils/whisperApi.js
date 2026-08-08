@@ -1,61 +1,49 @@
 /**
  * Whisper API Client for Malagasy Audio Transcription
- * Uses OpenAI Whisper large v3 via Hugging Face Inference API
+ * Routes calls via Next.js API Proxy (/api/transcribe) to avoid CORS / DNS browser errors.
  */
-
-const DEFAULT_MODEL = "openai/whisper-large-v3";
 
 /**
  * Transcribes a single audio blob chunk (approx 30s WAV)
  * @param {Blob} audioBlob 
- * @param {string} apiKey Optional Hugging Face API key
  * @returns {Promise<{text: string, error?: string}>}
  */
-export async function transcribeChunk(audioBlob, apiKey = "") {
-  const url = `https://api-inference.huggingface.co/models/${DEFAULT_MODEL}`;
-
-  const headers = {};
-  if (apiKey && apiKey.trim().length > 0) {
-    headers["Authorization"] = `Bearer ${apiKey.trim()}`;
-  }
-
+export async function transcribeChunk(audioBlob) {
   try {
-    const response = await fetch(url, {
+    const response = await fetch("/api/transcribe", {
       method: "POST",
       headers: {
-        ...headers,
         "Content-Type": "audio/wav",
-        "x-wait-for-model": "true",
       },
       body: audioBlob,
     });
 
+    const data = await response.json();
+
     if (!response.ok) {
-      const errText = await response.text();
       if (response.status === 503) {
-        return { text: "", error: "Le modèle IA est en cours de chargement sur Hugging Face (réessai automatique dans quelques secondes...)" };
+        return { text: "", error: "chargement" };
       }
-      throw new Error(`Erreur API (${response.status}): ${errText}`);
+      throw new Error(data.error || `Erreur serveur (${response.status})`);
     }
 
-    const result = await response.json();
-    return { text: result.text || "", raw: result };
+    return { text: data.text || "", raw: data };
   } catch (error) {
-    console.error("Transcribe chunk error:", error);
+    console.error("Erreur de transcription chunk:", error);
     return { text: "", error: error.message };
   }
 }
 
 /**
- * Processes multiple chunks concurrently in batches to maximize transcription speed for 80min audios
+ * Traite plusieurs morceaux audio en parallèle pour accélérer les audios de 80 min
  * @param {Array<{id: number, blob: Blob, startTime: number, endTime: number}>} chunks 
- * @param {string} apiKey 
+ * @param {string} _unusedKey 
  * @param {function(number, number, string)} onProgress (completedCount, totalChunks, currentText)
  * @returns {Promise<Array<{id: number, startTime: number, endTime: number, text: string}>>}
  */
-export async function processAudioChunksBatch(chunks, apiKey = "", onProgress) {
+export async function processAudioChunksBatch(chunks, _unusedKey, onProgress) {
   const results = new Array(chunks.length);
-  const CONCURRENCY = 3; // 3 concurrent requests for fast processing
+  const CONCURRENCY = 2; // 2 requêtes simultanées
   let completed = 0;
 
   for (let i = 0; i < chunks.length; i += CONCURRENCY) {
@@ -70,12 +58,13 @@ export async function processAudioChunksBatch(chunks, apiKey = "", onProgress) {
 
         while (attempts < 3 && !success) {
           attempts++;
-          const res = await transcribeChunk(chunk.blob, apiKey);
+          const res = await transcribeChunk(chunk.blob);
           if (res.error && res.error.includes("chargement")) {
-            await new Promise((r) => setTimeout(r, 5000));
+            // Attendre 4 secondes si le modèle se charge
+            await new Promise((r) => setTimeout(r, 4000));
           } else if (res.error) {
-            console.warn(`Chunk ${index} attempt ${attempts} failed:`, res.error);
-            await new Promise((r) => setTimeout(r, 2000));
+            console.warn(`Morceau ${index} tentative ${attempts} échouée:`, res.error);
+            await new Promise((r) => setTimeout(r, 1500));
           } else {
             textResult = res.text.trim();
             success = true;
