@@ -88,6 +88,14 @@ export async function POST(request) {
 
     const base64Audio = Buffer.from(audioData).toString('base64');
 
+    const MALAGASY_DICTIONARY_PROMPT = 
+      "Fandraisam-peo amin'ny teny malagasy ofisialy, ara-dalàna sy ara-fiarahamonina eto Madagasikara: " +
+      "sendika, komity, mpiasa, lalàna, didy, fivoriana, mpitantana, Madagasikara, fanjakana, orinasa, solontena, " +
+      "delegasiona, solontenan'ny mpiasa, lalàna mifehy ny asa, sata, fitsipika, fifanarahana, dinika sosialy, " +
+      "fandraharahana, tambazotra, fitantanana, fampandrosoana, fiarahamonina, mpanatanteraka, fihaonambe, " +
+      "birao, fifidianana, fitarainana, zo, adidy, karama, fisotroan-dronono, fahasalamana, fiarovana, fepetra, " +
+      "fivondronana, sekretera jeneraly, filoha, mpikambana, rafitra, komity antriprise, fanitsiana, tatitra.";
+
     // 1. Essai avec OpenAI (Priorité pour qualité 99% + Pipeline 3 étapes ChatGPT)
     if (openaiKey) {
       for (let attempt = 1; attempt <= 3; attempt++) {
@@ -98,7 +106,7 @@ export async function POST(request) {
           formData.append('model', 'whisper-1');
           formData.append('language', 'mg');
           formData.append('temperature', '0.0');
-          formData.append('prompt', "Fandraisam-peo amin'ny teny malagasy ofisialy sy mahazatra: sendika, komity, mpiasa, lalàna, didy, fivoriana, mpitantana, Madagasikara, fanjakana, orinasa, solontena.");
+          formData.append('prompt', MALAGASY_DICTIONARY_PROMPT);
 
           const whisperRes = await fetch("https://api.openai.com/v1/audio/transcriptions", {
             method: "POST",
@@ -199,7 +207,7 @@ CRITICAL INSTRUCTIONS:
         formData.append('model', 'whisper-large-v3');
         formData.append('language', 'mg');
         formData.append('temperature', '0.0');
-        formData.append('prompt', "Fandraisam-peo amin'ny teny malagasy ofisialy sy mahazatra: sendika, komity, mpiasa, lalàna, didy, fivoriana, mpitantana, Madagasikara, fanjakana, orinasa, solontena.");
+        formData.append('prompt', MALAGASY_DICTIONARY_PROMPT);
 
         const groqRes = await fetch("https://api.groq.com/openai/v1/audio/transcriptions", {
           method: "POST",
